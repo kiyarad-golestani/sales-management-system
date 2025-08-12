@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش برندی فروش همه بازاریابان</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+        }
+        
+        .date-filter {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .summary-card h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .summary-card .number {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .top-salespeople {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            background: linear-gradient(135deg, #fd7e14 0%, #e83e8c 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .salespeople-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .salesperson-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .salesperson-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .salesperson-sales {
+            font-size: 16px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        /* 🆕 بخش گزارش تفصیلی بازاریاب-برند */
+        .detailed-analysis {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .detailed-analysis .section-header {
+            background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+        }
+        
+        .analysis-selectors {
+            padding: 25px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .selector-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 20px;
+            align-items: end;
+        }
+        
+        .analysis-results {
+            padding: 25px;
+            display: none;
+        }
+        
+        .analysis-summary {
+            background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            text-align: center;
+        }
+        
+        .analysis-stat h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        
+        .analysis-stat .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .products-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        
+        .products-group {
+            background: #fff;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .products-group-header {
+            padding: 15px 20px;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .sold-products .products-group-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+        
+        .unsold-products .products-group-header {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+        
+        .products-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .product-detail {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background 0.3s;
+        }
+        
+        .product-detail:hover {
+            background: #f8f9fa;
+        }
+        
+        .product-detail:last-child {
+            border-bottom: none;
+        }
+        
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 8px;
+        }
+        
+        .product-name-detail {
+            font-weight: 600;
+            color: #333;
+            font-size: 15px;
+        }
+        
+        .product-code {
+            font-size: 12px;
+            color: #666;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        .product-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            font-size: 13px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        
+        .stat-item.amount {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .stat-item.quantity {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .stat-item.percentage {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .unsold-product {
+            color: #6c757d;
+        }
+        
+        .unsold-reason {
+            background: #fff3cd;
+            color: #856404;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .brands-container {
+            display: grid;
+            gap: 30px;
+        }
+        
+        .brand-card {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .brand-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .brand-name {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .brand-total {
+            text-align: left;
+        }
+        
+        .brand-total .amount {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .brand-total .quantity {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .salespeople-in-brand {
+            padding: 20px;
+        }
+        
+        .salesperson-section {
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .salesperson-section:last-child {
+            margin-bottom: 0;
+        }
+        
+        .salesperson-header {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .salesperson-info {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .salesperson-brand-total {
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .product-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+        
+        .product-item:last-child {
+            border-bottom: none;
+        }
+        
+        .product-info {
+            flex: 1;
+        }
+        
+        .product-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .product-category {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .product-sales {
+            text-align: left;
+        }
+        
+        .product-amount {
+            font-size: 15px;
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        .product-quantity {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            display: none;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .filter-row, .selector-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .salespeople-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .analysis-summary {
+                grid-template-columns: 1fr;
+            }
+            
+            .products-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .product-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .brand-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .salesperson-header {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .product-item {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>گزارش برندی فروش همه بازاریابان</h1>
+            <a href="{{ url_for('index') }}" class="back-btn">بازگشت به داشبورد</a>
+        </div>
+        
+        <div class="date-filter">
+            <form id="reportForm">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label for="dateType">نوع تاریخ:</label>
+                        <select id="dateType">
+                            <option value="jalali">شمسی</option>
+                            <option value="gregorian">میلادی</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dateFrom">از تاریخ:</label>
+                        <input type="text" id="dateFrom" placeholder="مثال: 1403/01/01" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dateTo">تا تاریخ:</label>
+                        <input type="text" id="dateTo" placeholder="مثال: 1403/01/30" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">نمایش گزارش</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>در حال بارگذاری گزارش...</p>
+        </div>
+        
+        <div class="results" id="results">
+            <!-- خلاصه آمار -->
+            <div class="summary-cards" id="summaryCards"></div>
+            
+            <!-- بهترین بازاریابان -->
+            <div class="top-salespeople" id="topSalespeople" style="display: none;">
+                <div class="section-header">🏆 رتبه‌بندی بازاریابان</div>
+                <div class="salespeople-grid" id="salespeopleGrid"></div>
+            </div>
+            
+            <!-- 🆕 گزارش تفصیلی بازاریاب-برند -->
+            <div class="detailed-analysis" id="detailedAnalysis" style="display: none;">
+                <div class="section-header">🔍 گزارش تفصیلی بازاریاب-برند</div>
+                <div class="analysis-selectors">
+                    <div class="selector-row">
+                        <div class="form-group">
+                            <label for="salespersonSelect">انتخاب بازاریاب:</label>
+                            <select id="salespersonSelect">
+                                <option value="">انتخاب کنید...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="brandSelect">انتخاب برند:</label>
+                            <select id="brandSelect" disabled>
+                                <option value="">ابتدا بازاریاب را انتخاب کنید</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success" onclick="loadDetailedAnalysis()" id="analysisBtn" disabled>
+                                📊 نمایش تحلیل
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="analysis-results" id="analysisResults">
+                    <!-- نتایج تحلیل اینجا نمایش داده می‌شود -->
+                </div>
+            </div>
+            
+            <!-- برندها -->
+            <div class="brands-container" id="brandsContainer"></div>
+        </div>
+        
+        <div class="no-results" id="noResults">
+            <h3>هیچ فروشی در بازه زمانی انتخابی یافت نشد</h3>
+            <p>لطفاً بازه زمانی دیگری انتخاب کنید</p>
+        </div>
+    </div>
+
+    <script>
+        // متغیرهای سراسری
+        let currentData = null;
+        let currentDateRange = null;
+        
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dateType = document.getElementById('dateType').value;
+            const dateFrom = document.getElementById('dateFrom').value.trim();
+            const dateTo = document.getElementById('dateTo').value.trim();
+            
+            if (!dateFrom || !dateTo) {
+                showError('لطفاً هر دو تاریخ را وارد کنید');
+                return;
+            }
+            
+            // ذخیره اطلاعات بازه زمانی
+            currentDateRange = {
+                date_from: dateFrom,
+                date_to: dateTo,
+                date_type: dateType
+            };
+            
+            // نمایش لودینگ
+            showLoading();
+            hideError();
+            hideResults();
+            hideNoResults();
+            
+            // ارسال درخواست
+            fetch('/get_admin_brand_sales_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(currentDateRange)
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else if (data.brands && data.brands.length > 0) {
+                    currentData = data;
+                    displayResults(data);
+                } else {
+                    showNoResults();
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                showError('خطا در دریافت اطلاعات از سرور');
+            });
+        });
+        
+        // 🆕 رویداد تغییر بازاریاب
+        document.getElementById('salespersonSelect').addEventListener('change', function() {
+            const selectedSalesperson = this.value;
+            const brandSelect = document.getElementById('brandSelect');
+            const analysisBtn = document.getElementById('analysisBtn');
+            
+            if (selectedSalesperson && currentData) {
+                // پیدا کردن برندهایی که این بازاریاب فروش داشته
+                const salespersonBrands = new Set();
+                
+                currentData.brands.forEach(brand => {
+                    brand.salespeople_sales.forEach(sp => {
+                        if (sp.salesperson_code === selectedSalesperson) {
+                            salespersonBrands.add(brand.brand_name);
+                        }
+                    });
+                });
+                
+                // پر کردن لیست برندها
+                brandSelect.innerHTML = '<option value="">انتخاب برند...</option>';
+                Array.from(salespersonBrands).sort().forEach(brand => {
+                    brandSelect.innerHTML += `<option value="${brand}">${brand}</option>`;
+                });
+                
+                brandSelect.disabled = false;
+                brandSelect.addEventListener('change', function() {
+                    analysisBtn.disabled = !this.value;
+                });
+            } else {
+                brandSelect.innerHTML = '<option value="">ابتدا بازاریاب را انتخاب کنید</option>';
+                brandSelect.disabled = true;
+                analysisBtn.disabled = true;
+            }
+            
+            // مخفی کردن نتایج قبلی
+            document.getElementById('analysisResults').style.display = 'none';
+        });
+        
+        // 🆕 تابع بارگذاری تحلیل تفصیلی
+        async function loadDetailedAnalysis() {
+            const salespersonCode = document.getElementById('salespersonSelect').value;
+            const brandName = document.getElementById('brandSelect').value;
+            
+            if (!salespersonCode || !brandName || !currentDateRange) {
+                showError('لطفاً بازاریاب و برند را انتخاب کنید');
+                return;
+            }
+            
+            try {
+                showLoading();
+                
+                const response = await fetch('/get_salesperson_brand_detail', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        salesperson_code: salespersonCode,
+                        brand_name: brandName,
+                        ...currentDateRange
+                    })
+                });
+                
+                const data = await response.json();
+                
+                hideLoading();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayDetailedAnalysis(data);
+                }
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Error:', error);
+                showError('خطا در دریافت تحلیل تفصیلی');
+            }
+        }
+        
+        // 🆕 نمایش تحلیل تفصیلی
+        function displayDetailedAnalysis(data) {
+            const analysisResults = document.getElementById('analysisResults');
+            
+            // محاسبه آمار کلی
+            const totalProducts = data.sold_products.length + data.unsold_products.length;
+            const soldCount = data.sold_products.length;
+            const totalSales = data.sold_products.reduce((sum, p) => sum + p.total_amount, 0);
+            
+            // ساختار HTML تحلیل
+            analysisResults.innerHTML = `
+                <div class="analysis-summary">
+                    <div class="analysis-stat">
+                        <h4>مجموع فروش</h4>
+                        <div class="value">${formatNumber(totalSales)}</div>
+                        <small>تومان</small>
+                    </div>
+                    <div class="analysis-stat">
+                        <h4>کالاهای فروخته شده</h4>
+                        <div class="value">${soldCount} از ${totalProducts}</div>
+                        <small>${((soldCount/totalProducts)*100).toFixed(1)}% پوشش</small>
+                    </div>
+                    <div class="analysis-stat">
+                        <h4>بازاریاب و برند</h4>
+                        <div class="value" style="font-size: 16px;">${data.salesperson_name}</div>
+                        <small>${data.brand_name}</small>
+                    </div>
+                </div>
+                
+                <div class="products-section">
+                    <div class="products-group sold-products">
+                        <div class="products-group-header">
+                            ✅ کالاهای فروخته شده (${soldCount} کالا)
+                        </div>
+                        <div class="products-list">
+                            ${data.sold_products.map(product => `
+                                <div class="product-detail">
+                                    <div class="product-header">
+                                        <div class="product-name-detail">${product.product_name}</div>
+                                        <div class="product-code">${product.product_code}</div>
+                                    </div>
+                                    <div class="product-stats">
+                                        <div class="stat-item amount">
+                                            <strong>${formatNumber(product.total_amount)}</strong><br>
+                                            <small>تومان</small>
+                                        </div>
+                                        <div class="stat-item quantity">
+                                            <strong>${formatNumber(product.total_quantity)}</strong><br>
+                                            <small>عدد</small>
+                                        </div>
+                                        <div class="stat-item percentage">
+                                            <strong>${product.percentage.toFixed(1)}%</strong><br>
+                                            <small>از کل فروش</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="products-group unsold-products">
+                        <div class="products-group-header">
+                            ❌ کالاهای فروخته نشده (${data.unsold_products.length} کالا)
+                        </div>
+                        <div class="products-list">
+                            ${data.unsold_products.map(product => `
+                                <div class="product-detail unsold-product">
+                                    <div class="product-header">
+                                        <div class="product-name-detail">${product.product_name}</div>
+                                        <div class="product-code">${product.product_code}</div>
+                                    </div>
+                                    <div class="unsold-reason">
+                                        💡 فرصت فروش: ${formatNumber(product.price)} تومان
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            analysisResults.style.display = 'block';
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function showResults() {
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function hideResults() {
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        function showNoResults() {
+            document.getElementById('noResults').style.display = 'block';
+        }
+        
+        function hideNoResults() {
+            document.getElementById('noResults').style.display = 'none';
+        }
+        
+        function displayResults(data) {
+            // نمایش خلاصه آمار
+            const summaryCards = document.getElementById('summaryCards');
+            summaryCards.innerHTML = `
+                <div class="summary-card">
+                    <h3>مجموع فروش</h3>
+                    <div class="number">${formatNumber(data.total_sales)}</div>
+                    <small>تومان</small>
+                </div>
+                <div class="summary-card" style="background: linear-gradient(135deg, #007bff 0%, #6f42c1 100%);">
+                    <h3>تعداد برندها</h3>
+                    <div class="number">${data.brands.length}</div>
+                    <small>برند فعال</small>
+                </div>
+                <div class="summary-card" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                    <h3>تعداد بازاریابان</h3>
+                    <div class="number">${data.salespeople.filter(sp => sp.total_sales > 0).length}</div>
+                    <small>بازاریاب فعال</small>
+                </div>
+                <div class="summary-card" style="background: linear-gradient(135deg, #fd7e14 0%, #e83e8c 100%);">
+                    <h3>بازه زمانی</h3>
+                    <div class="number" style="font-size: 16px;">${data.period_info}</div>
+                    <small>${data.date_type === 'jalali' ? 'شمسی' : 'میلادی'}</small>
+                </div>
+            `;
+            
+            // نمایش رتبه‌بندی بازاریابان
+            if (data.salespeople && data.salespeople.length > 0) {
+                const topSalespeople = document.getElementById('topSalespeople');
+                const salespeopleGrid = document.getElementById('salespeopleGrid');
+                
+                // فقط بازاریابانی که فروش داشتن
+                const activeSalespeople = data.salespeople.filter(sp => sp.total_sales > 0);
+                
+                if (activeSalespeople.length > 0) {
+                    salespeopleGrid.innerHTML = '';
+                    
+                    activeSalespeople.forEach((sp, index) => {
+                        const percentage = data.total_sales > 0 ? ((sp.total_sales / data.total_sales) * 100).toFixed(1) : 0;
+                        const rank = index + 1;
+                        
+                        let rankIcon = '';
+                        if (rank === 1) rankIcon = '🥇';
+                        else if (rank === 2) rankIcon = '🥈';
+                        else if (rank === 3) rankIcon = '🥉';
+                        else rankIcon = `${rank}`;
+                        
+                        const spCard = document.createElement('div');
+                        spCard.className = 'salesperson-card';
+                        spCard.innerHTML = `
+                            <div style="font-size: 20px; margin-bottom: 5px;">${rankIcon}</div>
+                            <div class="salesperson-name">${sp.salesperson_name}</div>
+                            <div class="salesperson-sales">${formatNumber(sp.total_sales)} تومان</div>
+                            <div style="font-size: 12px; color: #666; margin-top: 3px;">${percentage}% از کل فروش</div>
+                        `;
+                        salespeopleGrid.appendChild(spCard);
+                    });
+                    
+                    topSalespeople.style.display = 'block';
+                    
+                    // 🆕 پر کردن انتخابگر بازاریابان
+                    const salespersonSelect = document.getElementById('salespersonSelect');
+                    salespersonSelect.innerHTML = '<option value="">انتخاب کنید...</option>';
+                    activeSalespeople.forEach(sp => {
+                        salespersonSelect.innerHTML += `<option value="${sp.salesperson_code}">${sp.salesperson_name}</option>`;
+                    });
+                    
+                    // نمایش بخش تحلیل تفصیلی
+                    document.getElementById('detailedAnalysis').style.display = 'block';
+                }
+            }
+            
+            // نمایش برندها
+            const brandsContainer = document.getElementById('brandsContainer');
+            brandsContainer.innerHTML = '';
+            
+            data.brands.forEach(brand => {
+                const brandCard = document.createElement('div');
+                brandCard.className = 'brand-card';
+                
+                // محاسبه درصد فروش این برند
+                const percentage = data.total_sales > 0 ? ((brand.total_amount / data.total_sales) * 100).toFixed(1) : 0;
+                
+                // ساخت بخش بازاریابان این برند
+                let salespeopleHtml = '';
+                brand.salespeople_sales.forEach(sp => {
+                    // ساخت لیست کالاها
+                    let productsHtml = '';
+                    sp.products.forEach(product => {
+                        productsHtml += `
+                            <div class="product-item">
+                                <div class="product-info">
+                                    <div class="product-name">${product.product_name}</div>
+                                    <div class="product-category">${product.category}</div>
+                                </div>
+                                <div class="product-sales">
+                                    <div class="product-amount">${formatNumber(product.amount)} تومان</div>
+                                    <div class="product-quantity">${formatNumber(product.quantity)} عدد</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    salespeopleHtml += `
+                        <div class="salesperson-section">
+                            <div class="salesperson-header">
+                                <div class="salesperson-info">${sp.salesperson_name}</div>
+                                <div class="salesperson-brand-total">
+                                    ${formatNumber(sp.total_amount)} تومان • ${formatNumber(sp.total_quantity)} عدد
+                                </div>
+                            </div>
+                            <div class="products-list">
+                                ${productsHtml}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                brandCard.innerHTML = `
+                    <div class="brand-header">
+                        <div class="brand-name">${brand.brand_name} (ردیف ${brand.radif})</div>
+                        <div class="brand-total">
+                            <div class="amount">${formatNumber(brand.total_amount)} تومان</div>
+                            <div class="quantity">${formatNumber(brand.total_quantity)} عدد • ${percentage}%</div>
+                        </div>
+                    </div>
+                    <div class="salespeople-in-brand">
+                        ${salespeopleHtml}
+                    </div>
+                `;
+                
+                brandsContainer.appendChild(brandCard);
+            });
+            
+            showResults();
+        }
+        
+        function formatNumber(num) {
+            return parseInt(num).toLocaleString('fa-IR');
+        }
+        
+        // تنظیم تاریخ پیش‌فرض (اول ماه تا امروز)
+        window.addEventListener('load', function() {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            
+            // تبدیل به شمسی (تقریبی)
+            const jalaliYear = currentYear - 621;
+            const jalaliMonth = currentMonth;
+            
+            document.getElementById('dateFrom').value = `${jalaliYear}/${jalaliMonth.toString().padStart(2, '0')}/01`;
+            document.getElementById('dateTo').value = `${jalaliYear}/${jalaliMonth.toString().padStart(2, '0')}/30`;
+        });
+    </script>
+</body>
+</html>

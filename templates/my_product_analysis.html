@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحلیل عملکرد فروش من</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .back-btn {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: #5a6268;
+            color: white;
+            text-decoration: none;
+        }
+        
+        .user-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .user-info h2 {
+            margin-bottom: 5px;
+        }
+        
+        .user-info p {
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        .filter-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .filter-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .analysis-summary {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .summary-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .summary-stat {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .summary-stat h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        
+        .summary-stat .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        /* Accordion Styles */
+        .accordion {
+            margin-bottom: 20px;
+        }
+        
+        .accordion-item {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .accordion-header {
+            padding: 20px 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .accordion-header:hover {
+            background: #f8f9fa;
+        }
+        
+        .accordion-header.active {
+            background: #f8f9fa;
+        }
+        
+        .accordion-header .icon {
+            font-size: 18px;
+            transition: transform 0.3s;
+        }
+        
+        .accordion-header.active .icon {
+            transform: rotate(180deg);
+        }
+        
+        .sold-by-me {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+        
+        .sold-by-others {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: white;
+        }
+        
+        .not-sold {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+            color: white;
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            background: #fafafa;
+        }
+        
+        .accordion-content.active {
+            max-height: 800px;
+            overflow-y: auto;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 25px;
+        }
+        
+        .product-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .brand-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            margin-top: 10px;
+        }
+        
+        .product-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            flex: 1;
+            margin-left: 10px;
+        }
+        
+        .product-code {
+            background: #e9ecef;
+            color: #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .product-details {
+            margin-bottom: 15px;
+        }
+        
+        .product-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .product-detail strong {
+            color: #333;
+        }
+        
+        .product-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 13px;
+        }
+        
+        .stat-box .number {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-box.amount .number {
+            color: #28a745;
+        }
+        
+        .stat-box.quantity .number {
+            color: #007bff;
+        }
+        
+        .stat-box.stock .number {
+            color: #6f42c1;
+        }
+        
+        .stat-box.price .number {
+            color: #fd7e14;
+        }
+        
+        .sales-by-others {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .other-salesperson {
+            background: #fff3cd;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .opportunity-info {
+            background: #d1ecf1;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #0c5460;
+        }
+        
+        .stock-info {
+            background: #e2e3f0;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #6f42c1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .products-grid {
+                grid-template-columns: 1fr;
+                padding: 15px;
+            }
+            
+            .product-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .product-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .stock-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                📊 تحلیل عملکرد فروش من
+            </h1>
+            <a href="{{ url_for('index') }}" class="back-btn">بازگشت به داشبورد</a>
+        </div>
+        
+        <div class="user-info">
+            <h2>{{ user.Namev }}</h2>
+            <p>تحلیل عملکرد فروش و فرصت‌های بهبود</p>
+        </div>
+        
+        <div class="filter-section">
+            <div class="filter-title">
+                📅 انتخاب بازه زمانی
+            </div>
+            <form id="analysisForm">
+                <div class="filter-row">
+                    <div class="form-group">
+                        <label for="dateType">
+                            📅 نوع تاریخ:
+                        </label>
+                        <select id="dateType">
+                            <option value="jalali">شمسی</option>
+                            <option value="gregorian">میلادی</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dateFrom">
+                            📆 از تاریخ:
+                        </label>
+                        <input type="text" id="dateFrom" placeholder="مثال: 1403/01/01" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dateTo">
+                            📆 تا تاریخ:
+                        </label>
+                        <input type="text" id="dateTo" placeholder="مثال: 1403/01/30" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            🔍 تحلیل عملکرد من
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>در حال تحلیل عملکرد شما...</p>
+        </div>
+        
+        <div class="results" id="results">
+            <!-- خلاصه تحلیل -->
+            <div class="analysis-summary" id="analysisSummary">
+                <div class="summary-title" id="summaryTitle"></div>
+                <div class="summary-stats" id="summaryStats"></div>
+            </div>
+            
+            <!-- بخش‌های accordion -->
+            <div class="accordion">
+                <!-- کالاهای فروخته شده توسط من -->
+                <div class="accordion-item">
+                    <div class="accordion-header sold-by-me" onclick="toggleAccordion('soldByMe')">
+                        <div>
+                            <span id="soldByMeTitle">✅ کالاهای فروخته شده توسط من</span>
+                        </div>
+                        <div class="icon">🔽</div>
+                    </div>
+                    <div class="accordion-content" id="soldByMeContent">
+                        <div class="products-grid" id="soldByMeGrid">
+                            <!-- کالاها اینجا قرار می‌گیرند -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- فرصت‌های از دست رفته -->
+                <div class="accordion-item">
+                    <div class="accordion-header sold-by-others" onclick="toggleAccordion('soldByOthers')">
+                        <div>
+                            <span id="soldByOthersTitle">⚠️ فرصت‌های از دست رفته</span>
+                        </div>
+                        <div class="icon">🔽</div>
+                    </div>
+                    <div class="accordion-content" id="soldByOthersContent">
+                        <div class="products-grid" id="soldByOthersGrid">
+                            <!-- کالاها اینجا قرار می‌گیرند -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- فرصت‌های فروش جدید -->
+                <div class="accordion-item">
+                    <div class="accordion-header not-sold" onclick="toggleAccordion('notSold')">
+                        <div>
+                            <span id="notSoldTitle">🎯 فرصت‌های فروش جدید</span>
+                        </div>
+                        <div class="icon">🔽</div>
+                    </div>
+                    <div class="accordion-content" id="notSoldContent">
+                        <div class="products-grid" id="notSoldGrid">
+                            <!-- کالاها اینجا قرار می‌گیرند -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ارسال فرم تحلیل
+        document.getElementById('analysisForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dateType = document.getElementById('dateType').value;
+            const dateFrom = document.getElementById('dateFrom').value.trim();
+            const dateTo = document.getElementById('dateTo').value.trim();
+            
+            if (!dateFrom || !dateTo) {
+                showError('لطفاً هر دو تاریخ را وارد کنید');
+                return;
+            }
+            
+            analyzeMyPerformance(dateType, dateFrom, dateTo);
+        });
+        
+        // تحلیل عملکرد
+        async function analyzeMyPerformance(dateType, dateFrom, dateTo) {
+            showLoading();
+            hideError();
+            hideResults();
+            
+            try {
+                const response = await fetch('/get_my_product_analysis', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date_type: dateType,
+                        date_from: dateFrom,
+                        date_to: dateTo
+                    })
+                });
+                
+                const data = await response.json();
+                
+                hideLoading();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayAnalysisResults(data);
+                }
+                
+            } catch (error) {
+                hideLoading();
+                console.error('Error:', error);
+                showError('خطا در تحلیل داده‌ها');
+            }
+        }
+        
+        // نمایش نتایج تحلیل
+        function displayAnalysisResults(data) {
+            // خلاصه تحلیل
+            document.getElementById('summaryTitle').textContent = 
+                `عملکرد فروش من (${data.period_info})`;
+            
+            document.getElementById('summaryStats').innerHTML = `
+                <div class="summary-stat">
+                    <h4>فروش من</h4>
+                    <div class="value">${formatNumber(data.total_sales)}</div>
+                    <small>تومان</small>
+                </div>
+                <div class="summary-stat">
+                    <h4>کالاهای فروخته</h4>
+                    <div class="value">${data.sold_by_me.length}</div>
+                    <small>از ${data.total_products} کالا</small>
+                </div>
+                <div class="summary-stat">
+                    <h4>فرصت‌های از دست رفته</h4>
+                    <div class="value">${formatNumber(data.total_lost_opportunities)}</div>
+                    <small>تومان</small>
+                </div>
+                <div class="summary-stat">
+                    <h4>درصد پوشش</h4>
+                    <div class="value">${((data.sold_by_me.length / data.total_products) * 100).toFixed(1)}%</div>
+                    <small>از کل کالاها</small>
+                </div>
+            `;
+            
+            // عنوان‌های accordion
+            document.getElementById('soldByMeTitle').textContent = 
+                `✅ کالاهای فروخته شده توسط من (${data.sold_by_me.length} کالا)`;
+            
+            document.getElementById('soldByOthersTitle').textContent = 
+                `⚠️ فرصت‌های از دست رفته (${data.sold_by_others.length} کالا)`;
+            
+            document.getElementById('notSoldTitle').textContent = 
+                `🎯 فرصت‌های فروش جدید (${data.not_sold.length} کالا)`;
+            
+            // پر کردن محتوای accordion ها
+            fillProductGrid('soldByMeGrid', data.sold_by_me, 'sold');
+            fillProductGrid('soldByOthersGrid', data.sold_by_others, 'others');
+            fillProductGrid('notSoldGrid', data.not_sold, 'not_sold');
+            
+            showResults();
+        }
+        
+        // پر کردن گرید کالاها
+        function fillProductGrid(gridId, products, type) {
+            const grid = document.getElementById(gridId);
+            
+            if (products.length === 0) {
+                grid.innerHTML = '<div class="no-data">هیچ کالایی در این دسته یافت نشد</div>';
+                return;
+            }
+            
+            grid.innerHTML = '';
+            
+            products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'product-card';
+                
+                if (type === 'sold') {
+                    card.innerHTML = `
+                        <div class="brand-badge">${product.brand} (${product.radif})</div>
+                        <div class="product-header">
+                            <div class="product-name">${product.product_name}</div>
+                            <div class="product-code">${product.product_code}</div>
+                        </div>
+                        <div class="product-details">
+                            <div class="product-detail">
+                                <span>دسته‌بندی:</span>
+                                <strong>${product.category}</strong>
+                            </div>
+                            <div class="product-detail">
+                                <span>قیمت واحد:</span>
+                                <strong>${formatNumber(product.price)} تومان</strong>
+                            </div>
+                        </div>
+                        <div class="product-stats">
+                            <div class="stat-box amount">
+                                <div class="number">${formatNumber(product.total_amount)}</div>
+                                <div>تومان فروش</div>
+                            </div>
+                            <div class="stat-box quantity">
+                                <div class="number">${formatNumber(product.total_quantity)}</div>
+                                <div>عدد فروش</div>
+                            </div>
+                        </div>
+                    `;
+                } else if (type === 'others') {
+                    let otherSalesHtml = '';
+                    if (product.other_sales && product.other_sales.length > 0) {
+                        otherSalesHtml = '<div class="sales-by-others">';
+                        product.other_sales.forEach(sale => {
+                            otherSalesHtml += `
+                                <div class="other-salesperson">
+                                    👤 ${sale.salesperson_name}: ${formatNumber(sale.amount)} تومان (${formatNumber(sale.quantity)} عدد)
+                                </div>
+                            `;
+                        });
+                        otherSalesHtml += '</div>';
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="brand-badge">${product.brand} (${product.radif})</div>
+                        <div class="product-header">
+                            <div class="product-name">${product.product_name}</div>
+                            <div class="product-code">${product.product_code}</div>
+                        </div>
+                        <div class="product-details">
+                            <div class="product-detail">
+                                <span>دسته‌بندی:</span>
+                                <strong>${product.category}</strong>
+                            </div>
+                            <div class="product-detail">
+                                <span>قیمت واحد:</span>
+                                <strong>${formatNumber(product.price)} تومان</strong>
+                            </div>
+                        </div>
+                        <div class="opportunity-info">
+                            💡 فرصت از دست رفته: ${formatNumber(product.total_lost_amount)} تومان
+                        </div>
+                        ${otherSalesHtml}
+                    `;
+                } else { // not_sold
+                    card.innerHTML = `
+                        <div class="brand-badge">${product.brand} (${product.radif})</div>
+                        <div class="product-header">
+                            <div class="product-name">${product.product_name}</div>
+                            <div class="product-code">${product.product_code}</div>
+                        </div>
+                        <div class="product-details">
+                            <div class="product-detail">
+                                <span>دسته‌بندی:</span>
+                                <strong>${product.category}</strong>
+                            </div>
+                        </div>
+                        <div class="stock-info">
+                            <div>
+                                💰 <strong>قیمت:</strong><br>
+                                ${formatNumber(product.price)} تومان
+                            </div>
+                            <div>
+                                📦 <strong>موجودی:</strong><br>
+                                ${formatNumber(product.stock)} عدد
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        // تابع accordion
+        function toggleAccordion(sectionId) {
+            const content = document.getElementById(sectionId + 'Content');
+            const header = content.previousElementSibling;
+            
+            if (content.classList.contains('active')) {
+                content.classList.remove('active');
+                header.classList.remove('active');
+            } else {
+                // بستن همه accordion ها
+                document.querySelectorAll('.accordion-content').forEach(item => {
+                    item.classList.remove('active');
+                });
+                document.querySelectorAll('.accordion-header').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // باز کردن accordion انتخاب شده
+                content.classList.add('active');
+                header.classList.add('active');
+            }
+        }
+        
+        // توابع کمکی
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function showResults() {
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function hideResults() {
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        function formatNumber(num) {
+            return parseInt(num).toLocaleString('fa-IR');
+        }
+        
+        // تنظیم تاریخ پیش‌فرض هنگام بارگذاری صفحه
+        window.addEventListener('load', function() {
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+            
+            // تبدیل به شمسی (تقریبی)
+            const jalaliYear = currentYear - 621;
+            const jalaliMonth = currentMonth;
+            
+            document.getElementById('dateFrom').value = `${jalaliYear}/${jalaliMonth.toString().padStart(2, '0')}/01`;
+            document.getElementById('dateTo').value = `${jalaliYear}/${jalaliMonth.toString().padStart(2, '0')}/30`;
+        });
+    </script>
+</body>
+</html>

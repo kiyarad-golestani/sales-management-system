@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لیست مشتریان</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+            border: 1px solid #667eea;
+        }
+        
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .page-title {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .customers-table-container {
+            overflow-x: auto;
+        }
+        
+        .customers-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            min-width: 800px;
+        }
+        
+        .customers-table th,
+        .customers-table td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        
+        .customers-table th {
+            background: #f8f9ff;
+            color: #333;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .customers-table tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .customers-table td {
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            min-width: 80px;
+            display: inline-block;
+        }
+        
+        .status-set {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-notset {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: #138496;
+        }
+        
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        
+        .alert {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .coordinates {
+            font-family: monospace;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav-links {
+                justify-content: center;
+            }
+            
+            .customers-table th,
+            .customers-table td {
+                padding: 10px 8px;
+                font-size: 12px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>مشتریان من</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}">داشبورد</a>
+                <a href="{{ url_for('profile') }}">پروفایل</a>
+                {% if user.Typev == 'admin' %}
+                    <a href="{{ url_for('users_list') }}">کاربران</a>
+                {% endif %}
+                <a href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="info-card">
+            <h2>سلام {{ user.Namev }}</h2>
+            <p>لیست مشتریان اختصاص یافته به شما</p>
+        </div>
+        
+        <h2 class="page-title">مدیریت مشتریان و مراجعات</h2>
+        
+        <div class="customers-table-container">
+            <table class="customers-table">
+                <thead>
+                    <tr>
+                        <th>کد مشتری</th>
+                        <th>نام مشتری</th>
+                        <th>وضعیت مکان</th>
+                        <th>مختصات</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td>{{ customer.CustomerCode }}</td>
+                        <td>{{ customer.CustomerName }}</td>
+                        <td>
+                            {% if customer.LocationSet %}
+                                <span class="status-badge status-set">ثبت شده</span>
+                            {% else %}
+                                <span class="status-badge status-notset">ثبت نشده</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if customer.Latitude and customer.Longitude %}
+                                <div class="coordinates">
+                                    عرض: {{ customer.Latitude }}<br>
+                                    طول: {{ customer.Longitude }}
+                                </div>
+                            {% else %}
+                                <span class="coordinates">مشخص نشده</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                {% if not customer.LocationSet %}
+                                    <a href="{{ url_for('set_location', customer_code=customer.CustomerCode) }}" 
+                                       class="btn btn-primary">ثبت مکان</a>
+                                {% else %}
+                                    <a href="{{ url_for('show_map', customer_code=customer.CustomerCode) }}" 
+                                       class="btn btn-info">نمایش نقشه</a>
+                                {% endif %}
+                                
+                                {% if customer.LocationSet %}
+                                    <form method="POST" action="{{ url_for('record_visit') }}" style="display: inline;">
+                                        <input type="hidden" name="customer_code" value="{{ customer.CustomerCode }}">
+                                        <button type="submit" class="btn btn-success">ثبت مراجعه</button>
+                                    </form>
+                                    <a href="{{ url_for('customer_report', customer_code=customer.CustomerCode) }}" 
+                                       class="btn btn-info">گزارش مراجعه</a>
+                                    <a href="{{ url_for('product_report', customer_code=customer.CustomerCode) }}" 
+                                       class="btn btn-primary">گزارش کالا</a>
+                                {% else %}
+                                    <button class="btn" disabled>ثبت مراجعه</button>
+                                    <a href="{{ url_for('customer_report', customer_code=customer.CustomerCode) }}" 
+                                       class="btn btn-info">گزارش مراجعه</a>
+                                    <a href="{{ url_for('product_report', customer_code=customer.CustomerCode) }}" 
+                                       class="btn btn-primary">گزارش کالا</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    
+                    {% if not customers %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #666; padding: 40px;">
+                            هیچ مشتری برای شما تعریف نشده است.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

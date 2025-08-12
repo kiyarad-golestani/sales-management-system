@@ -1,0 +1,1026 @@
+    <script>
+        const customerCode = "{{ customer.CustomerCode }}";
+        
+        // تغییر نوع تاریخ
+        document.querySelectorAll('input[name="dateType"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const jalaliInputs = document.getElementById('jalaliInputs');
+                const gregorianInputs = document.getElementById('gregorianInputs');
+                
+                if (this.value === 'jalali') {
+                    jalaliInputs.style.display = 'flex';
+                    gregorianInputs.style.display = 'none';
+                } else {
+                    jalaliInputs.style.display = 'none';
+                    gregorianInputs.style.display = 'flex';
+                }
+            });
+        });
+        
+        function validateJalaliDate(dateStr) {
+            // حذف فاصله‌های اضافی
+            dateStr = dateStr.trim();
+            
+            // بررسی فرمت 14030101 (8 رقم)
+            if (/^\d{8}$/.test(dateStr)) {
+                const year = parseInt(dateStr.substr(0, 4));
+                const month = parseInt(dateStr.substr(4, 2));
+                const day = parseInt(dateStr.substr(6, 2));
+                
+                if (year < 1300 || year > 1500) return false;
+                if (month < 1 || month > 12) return false;
+                if (day < 1 || day > 31) return false;
+                
+                return true;
+            }
+            
+            // بررسی فرمت 1403/01/01
+            if (/^\d{4}\/\d{2}\/\d{2}$/.test(dateStr)) {
+                const parts = dateStr.split('/');
+                const year = parseInt(parts[0]);
+                const month = parseInt(parts[1]);
+                const day = parseInt(parts[2]);
+                
+                if (year < 1300 || year > 1500) return false;
+                if (month < 1 || month > 12) return false;
+                if (day < 1 || day > 31) return false;
+                
+                return true;
+            }
+            
+            return false;
+        }
+        
+        function loadProductReport() {
+            const dateType = document.querySelector('input[name="dateType"]:checked').value;
+            let dateFrom, dateTo;
+            
+            if (dateType === 'jalali') {
+                dateFrom = document.getElementById('jalaliFrom').value;
+                dateTo = document.getElementById('jalaliTo').value;
+                
+                if (!dateFrom || !dateTo) {
+                    alert('لطفاً هر دو تاریخ شمسی را وارد کنید');
+                    return;
+                }
+                
+                if (!validateJalaliDate(dateFrom)) {
+                    alert('فرمت تاریخ شروع نادرست است. فرمت صحیح: 1403/01/01 یا 14030101');
+                    return;
+                }
+                
+                if (!validateJalaliDate(dateTo)) {
+                    alert('فرمت تاریخ پایان نادرست است. فرمت صحیح: 1403/12/29 یا 14031229');
+                    return;
+                }
+            } else {
+                dateFrom = document.getElementById('gregorianFrom').value;
+                dateTo = document.getElementById('gregorianTo').value;
+                
+                if (!dateFrom || !dateTo) {
+                    alert('لطفاً هر دو تاریخ میلادی را انتخاب کنید');
+                    return;
+                }
+                
+                if (dateFrom > dateTo) {
+                    alert('تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد');
+                    return;
+                }
+            }
+            
+            // نمایش loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsContainer').style.display = 'none';
+            
+            // درخواست AJAX
+            fetch(`/get_product_data/${customerCode}?date_from=${dateFrom}&date_to=${dateTo}&date_type=${dateType}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('خطا: ' + data.error);
+                        return;
+                    }
+                    
+                    displayResults(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در بارگذاری اطلاعات');
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+        
+        function displayResults(data) {
+            const container = document.getElementById('resultsContainer');
+            
+            // آمار کلی
+            const statsHtml = `
+                <div class="stats-summary">
+                    <h3>خلاصه گزارش از ${data.date_from_jalali} تا ${data.date_to_jalali}</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number">${data.purchased.length}</div>
+                            <div class="stat-label">کالاهای خریداری شده</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${data.not_purchased.length}</div>
+                            <div class="stat-label">کالاهای خریداری نشده</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${formatNumber(data.total_amount)}</div>
+                            <div class="stat-label">مجموع خرید (تومان)</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // کالاهای خریداری شده
+            let purchasedHtml = '';
+            if (data.purchased.length > 0) {
+                purchasedHtml = `
+                    <div class="section-title">
+                        🛒 کالاهای خریداری شده (${data.purchased.length} کالا)
+                    </div>
+                    <div class="products-grid">
+                        ${data.purchased.map(product => createProductCard(product, true)).join('')}
+                    </div>
+                `;
+            }
+            
+            // کالاهای خریداری نشده
+            let notPurchasedHtml = '';
+            if (data.not_purchased.length > 0) {
+                notPurchasedHtml = `
+                    <div class="section-title not-purchased">
+                        🚫 کالاهای خریداری نشده (${data.not_purchased.length} کالا)
+                    </div>
+                    <div class="products-grid">
+                        ${data.not_purchased.map(product => createProductCard(product, false)).join('')}
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = statsHtml + purchasedHtml + notPurchasedHtml;
+            container.style.display = 'block';
+            
+            // اضافه کردن event listener برای تصاویر
+            addImageClickListeners();
+        }
+        
+        function createProductCard(product, isPurchased) {
+            const purchaseStatsHtml = isPurchased ? `
+                <div class="purchase-stats">
+                    <h4>📊 آمار خرید در این بازه:</h4>
+                    <div class="stats-row">
+                        <span class="label">تعداد:</span>
+                        <span class="value">${product.TotalQuantity} عدد</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="label">مبلغ:</span>
+                        <span class="value">${formatNumber(product.TotalAmount)} تومان</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="label">درصد از کل خرید:</span>
+                        <span class="value">${product.Percentage}%</span>
+                    </div>
+                    <div class="percentage-bar">
+                        <div class="percentage-fill" style="width: ${product.Percentage}%"></div>
+                    </div>
+                    ${product.PurchaseDates ? `
+                        <div style="margin-top: 10px;">
+                            <h5 style="font-size: 12px; color: #666;">تاریخ‌های خرید:</h5>
+                            ${product.PurchaseDates.map(date => 
+                                `<div style="font-size: 11px; color: #555;">📅 ${date.date} (${date.compact}) - ${date.quantity} عدد</div>`
+                            ).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            ` : '';
+            
+            return `
+                <div class="product-card">
+                    <div class="product-image" onclick="showImageModal('${product.ProductCode}', '${product.ProductName}', '${product.ImageFile}', '${product.Description}', '${product.Offer1}', '${product.Offer2}', '${product.Offer3}')">
+                        <img src="/static/images/${product.ImageFile}" alt="${product.ProductName}" onerror="this.src='/static/images/null.jpg'">
+                        <div class="brand-badge">${product.Brand}</div>
+                        ${isPurchased ? '<div class="purchase-badge">خریداری شده</div>' : ''}
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${product.ProductName}</div>
+                        <div class="product-price">${formatNumber(product.Price)} تومان</div>
+                        <div class="product-category">${product.Category}</div>
+                        
+                        ${purchaseStatsHtml}
+                        
+                        <div class="offers-section">
+                            <h5>🎁 پیشنهادات ویژه:</h5>
+                            <div class="offer-item">${product.Offer1}</div>
+                            <div class="offer-item">${product.Offer2}</div>
+                            <div class="offer-item">${product.Offer3}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function formatNumber(num) {
+            return new Intl.NumberFormat('fa-IR').format(num);
+        }
+        
+        function showImageModal(code, name, image, description, offer1, offer2, offer3) {
+            document.getElementById('modalImage').src = `/static/images/${image}`;
+            document.getElementById('modalTitle').textContent = name;
+            document.getElementById('modalDescription').textContent = description;
+            
+            const offersHtml = `
+                <div class="offers-section">
+                    <h5>🎁 پیشنهادات ویژه:</h5>
+                    <div class="offer-item">${offer1}</div>
+                    <div class="offer-item">${offer2}</div>
+                    <div class="offer-item">${offer3}</div>
+                </div>
+            `;
+            document.getElementById('modalOffers').innerHTML = offersHtml;
+            
+            document.getElementById('imageModal').style.display = 'block';
+        }
+        
+        function addImageClickListeners() {
+            // Event listeners برای کلیک روی تصاویر در createProductCard اضافه شده‌اند
+        }
+        
+        // بستن modal
+        document.querySelector('.close').onclick = function() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+        
+        // بستن modal با کلیک خارج از آن
+        window.onclick = function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // تنظیم تاریخ پیش‌فرض شمسی
+        document.addEventListener('DOMContentLoaded', function() {
+            // تاریخ شمسی فعلی (تقریبی)
+            const today = new Date();
+            const currentJalaliYear = 1403; // سال جاری شمسی
+            
+            // تنظیم مقادیر پیش‌فرض
+            document.getElementById('jalaliFrom').value = '1403/01/01';
+            document.getElementById('jalaliTo').value = '1403/12/29';
+            
+            // تنظیم تاریخ میلادی هم
+            document.getElementById('gregorianTo').value = today.toISOString().split('T')[0];
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+            document.getElementById('gregorianFrom').value = lastMonth.toISOString().split('T')[0];
+            
+            // راهنمایی برای کاربر
+            document.getElementById('jalaliFrom').addEventListener('focus', function() {
+                this.placeholder = 'مثال: 1403/01/01 یا 14030101';
+            });
+            
+            document.getElementById('jalaliTo').addEventListener('focus', function() {
+                this.placeholder = 'مثال: 1403/12/29 یا 14031229';
+            });
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش کالاهای مشتری</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+            border: 1px solid #667eea;
+        }
+        
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .customer-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .date-filter {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .date-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .date-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .date-group label {
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .date-group input {
+            padding: 10px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            display: none;
+        }
+        
+        .results-container {
+            display: none;
+        }
+        
+        .stats-summary {
+            background: #e8f4fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 20px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .section-title {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 30px 0 20px 0;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .section-title.not-purchased {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .product-image {
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .product-image img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .brand-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .purchase-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .product-info {
+            padding: 20px;
+        }
+        
+        .product-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .product-price {
+            font-size: 18px;
+            color: #667eea;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .product-category {
+            background: #f8f9ff;
+            color: #667eea;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        
+        .purchase-stats {
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .purchase-stats h4 {
+            color: #155724;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        
+        .stats-row .label {
+            color: #666;
+        }
+        
+        .stats-row .value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .percentage-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .percentage-fill {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .offers-section {
+            margin-top: 15px;
+        }
+        
+        .offers-section h5 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .offer-item {
+            background: #fff3cd;
+            color: #856404;
+            padding: 5px 8px;
+            border-radius: 5px;
+            font-size: 11px;
+            margin: 3px 0;
+            border-left: 3px solid #ffc107;
+        }
+        
+        .alert {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        /* Modal برای نمایش عکس بزرگ */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+        }
+        
+        .modal-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .modal-details h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .modal-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .close {
+            color: #aaa;
+            float: left;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #000;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .nav-links {
+                justify-content: center;
+            }
+            
+            .date-inputs {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 15px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>گزارش کالاهای مشتری</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('customers_list') }}">بازگشت</a>
+                <a href="{{ url_for('index') }}">داشبورد</a>
+                <a href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="customer-header">
+            <h2>{{ customer.CustomerName }}</h2>
+            <p>کد مشتری: {{ customer.CustomerCode }}</p>
+        </div>
+        
+        <div class="date-filter">
+            <h3 style="text-align: center; margin-bottom: 20px; color: #333;">انتخاب بازه زمانی</h3>
+            
+            <div style="text-align: center; margin-bottom: 15px;">
+                <label style="margin-left: 20px;">
+                    <input type="radio" name="dateType" value="jalali" checked> تاریخ شمسی
+                </label>
+                <label>
+                    <input type="radio" name="dateType" value="gregorian"> تاریخ میلادی
+                </label>
+            </div>
+            
+            <div class="date-inputs">
+                <div class="date-group" id="jalaliInputs">
+                    <div class="date-group">
+                        <label>از تاریخ شمسی:</label>
+                        <input type="text" id="jalaliFrom" placeholder="1403/01/01 یا 14030101" 
+                               pattern="(\d{4}/\d{2}/\d{2}|\d{8})" title="فرمت: 1403/01/01 یا 14030101">
+                    </div>
+                    <div class="date-group">
+                        <label>تا تاریخ شمسی:</label>
+                        <input type="text" id="jalaliTo" placeholder="1403/12/29 یا 14031229" 
+                               pattern="(\d{4}/\d{2}/\d{2}|\d{8})" title="فرمت: 1403/12/29 یا 14031229">
+                    </div>
+                </div>
+                
+                <div class="date-group" id="gregorianInputs" style="display: none;">
+                    <div class="date-group">
+                        <label>از تاریخ میلادی:</label>
+                        <input type="date" id="gregorianFrom">
+                    </div>
+                    <div class="date-group">
+                        <label>تا تاریخ میلادی:</label>
+                        <input type="date" id="gregorianTo">
+                    </div>
+                </div>
+                
+                <div class="date-group">
+                    <button type="button" class="btn btn-primary" onclick="loadProductReport()">
+                        نمایش گزارش
+                    </button>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">
+                <p><strong>فرمت‌های مجاز تاریخ شمسی:</strong></p>
+                <p>1403/01/01 یا 14030101</p>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <h3>در حال بارگذاری...</h3>
+            <p>لطفاً منتظر بمانید</p>
+        </div>
+        
+        <div class="results-container" id="resultsContainer">
+            <!-- نتایج اینجا نمایش داده می‌شود -->
+        </div>
+    </div>
+    
+    <!-- Modal برای نمایش عکس بزرگ -->
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <img class="modal-image" id="modalImage" src="" alt="">
+            <div class="modal-details">
+                <h3 id="modalTitle"></h3>
+                <div class="modal-description" id="modalDescription"></div>
+                <div id="modalOffers"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const customerCode = "{{ customer.CustomerCode }}";
+        
+        function loadProductReport() {
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            
+            if (!dateFrom || !dateTo) {
+                alert('لطفاً هر دو تاریخ را انتخاب کنید');
+                return;
+            }
+            
+            if (dateFrom > dateTo) {
+                alert('تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد');
+                return;
+            }
+            
+            // نمایش loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsContainer').style.display = 'none';
+            
+            // درخواست AJAX
+            fetch(`/get_product_data/${customerCode}?date_from=${dateFrom}&date_to=${dateTo}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('خطا: ' + data.error);
+                        return;
+                    }
+                    
+                    displayResults(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در بارگذاری اطلاعات');
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+        
+        function displayResults(data) {
+            const container = document.getElementById('resultsContainer');
+            
+            // آمار کلی
+            const statsHtml = `
+                <div class="stats-summary">
+                    <h3>خلاصه گزارش از ${data.date_from} تا ${data.date_to}</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-number">${data.purchased.length}</div>
+                            <div class="stat-label">کالاهای خریداری شده</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${data.not_purchased.length}</div>
+                            <div class="stat-label">کالاهای خریداری نشده</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">${formatNumber(data.total_amount)}</div>
+                            <div class="stat-label">مجموع خرید (تومان)</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // کالاهای خریداری شده
+            let purchasedHtml = '';
+            if (data.purchased.length > 0) {
+                purchasedHtml = `
+                    <div class="section-title">
+                        🛒 کالاهای خریداری شده (${data.purchased.length} کالا)
+                    </div>
+                    <div class="products-grid">
+                        ${data.purchased.map(product => createProductCard(product, true)).join('')}
+                    </div>
+                `;
+            }
+            
+            // کالاهای خریداری نشده
+            let notPurchasedHtml = '';
+            if (data.not_purchased.length > 0) {
+                notPurchasedHtml = `
+                    <div class="section-title not-purchased">
+                        🚫 کالاهای خریداری نشده (${data.not_purchased.length} کالا)
+                    </div>
+                    <div class="products-grid">
+                        ${data.not_purchased.map(product => createProductCard(product, false)).join('')}
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = statsHtml + purchasedHtml + notPurchasedHtml;
+            container.style.display = 'block';
+            
+            // اضافه کردن event listener برای تصاویر
+            addImageClickListeners();
+        }
+        
+        function createProductCard(product, isPurchased) {
+            const purchaseStatsHtml = isPurchased ? `
+                <div class="purchase-stats">
+                    <h4>📊 آمار خرید در این بازه:</h4>
+                    <div class="stats-row">
+                        <span class="label">تعداد:</span>
+                        <span class="value">${product.TotalQuantity} عدد</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="label">مبلغ:</span>
+                        <span class="value">${formatNumber(product.TotalAmount)} تومان</span>
+                    </div>
+                    <div class="stats-row">
+                        <span class="label">درصد از کل خرید:</span>
+                        <span class="value">${product.Percentage}%</span>
+                    </div>
+                    <div class="percentage-bar">
+                        <div class="percentage-fill" style="width: ${product.Percentage}%"></div>
+                    </div>
+                </div>
+            ` : '';
+            
+            return `
+                <div class="product-card">
+                    <div class="product-image" onclick="showImageModal('${product.ProductCode}', '${product.ProductName}', '${product.ImageFile}', '${product.Description}', '${product.Offer1}', '${product.Offer2}', '${product.Offer3}')">
+                        <img src="/static/images/${product.ImageFile}" alt="${product.ProductName}" onerror="this.src='/static/images/null.jpg'">
+                        <div class="brand-badge">${product.Brand}</div>
+                        ${isPurchased ? '<div class="purchase-badge">خریداری شده</div>' : ''}
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${product.ProductName}</div>
+                        <div class="product-price">${formatNumber(product.Price)} تومان</div>
+                        <div class="product-category">${product.Category}</div>
+                        
+                        ${purchaseStatsHtml}
+                        
+                        <div class="offers-section">
+                            <h5>🎁 پیشنهادات ویژه:</h5>
+                            <div class="offer-item">${product.Offer1}</div>
+                            <div class="offer-item">${product.Offer2}</div>
+                            <div class="offer-item">${product.Offer3}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function formatNumber(num) {
+            return new Intl.NumberFormat('fa-IR').format(num);
+        }
+        
+        function showImageModal(code, name, image, description, offer1, offer2, offer3) {
+            document.getElementById('modalImage').src = `/static/images/${image}`;
+            document.getElementById('modalTitle').textContent = name;
+            document.getElementById('modalDescription').textContent = description;
+            
+            const offersHtml = `
+                <div class="offers-section">
+                    <h5>🎁 پیشنهادات ویژه:</h5>
+                    <div class="offer-item">${offer1}</div>
+                    <div class="offer-item">${offer2}</div>
+                    <div class="offer-item">${offer3}</div>
+                </div>
+            `;
+            document.getElementById('modalOffers').innerHTML = offersHtml;
+            
+            document.getElementById('imageModal').style.display = 'block';
+        }
+        
+        function addImageClickListeners() {
+            // Event listeners برای کلیک روی تصاویر در createProductCard اضافه شده‌اند
+        }
+        
+        // بستن modal
+        document.querySelector('.close').onclick = function() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+        
+        // بستن modal با کلیک خارج از آن
+        window.onclick = function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // تنظیم تاریخ پیش‌فرض (ماه گذشته تا امروز)
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, today.getDate());
+            
+            document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+            document.getElementById('dateFrom').value = lastMonth.toISOString().split('T')[0];
+        });
+    </script>
+</body>
+</html>
