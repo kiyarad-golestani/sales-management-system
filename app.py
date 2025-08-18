@@ -11,6 +11,8 @@ app.secret_key = 'your-secret-key-2024'
 USERS_FILE = 'users.xlsx'
 CUSTOMERS_FILE = 'customers.xlsx'
 VISITS_FILE = 'visits.xlsx'
+EXAMS_FILE = 'azmon.xlsx'  # ← این خط را اضافه کنید
+
 
 def load_brand_order_from_excel():
     """بارگذاری ترتیب برندها از شیت brand در فایل products.xlsx"""
@@ -2923,6 +2925,1056 @@ def all_reports():
                          total_visits=total_visits,
                          unique_customers=unique_customers,
                          user=session['user_info'])
+
+# 2. توابع مدیریت فایل آزمون:
+
+def create_exam_file_if_not_exists():
+    """ایجاد فایل azmon.xlsx اگر وجود نداشته باشد"""
+    if not os.path.exists(EXAMS_FILE):
+        try:
+            df = pd.DataFrame(columns=[
+                'ExamCode', 'ExamName', 'BrandName', 'CreatedDate', 'CreatedTime', 'CreatedBy'
+            ])
+            df.to_excel(EXAMS_FILE, sheet_name='list', index=False)
+            print("✅ فایل azmon.xlsx ایجاد شد")
+            return True
+        except Exception as e:
+            print(f"❌ خطا در ایجاد فایل آزمون: {e}")
+            return False
+    return True
+
+def load_exams_from_excel():
+    """بارگذاری آزمون‌ها از فایل Excel"""
+    try:
+        # ابتدا مطمئن شویم فایل وجود دارد
+        create_exam_file_if_not_exists()
+        
+        if not os.path.exists(EXAMS_FILE):
+            return pd.DataFrame(columns=[
+                'ExamCode', 'ExamName', 'ExamType', 'BrandName', 'Description',
+                'CreatedDate', 'CreatedTime', 'CreatedBy'
+            ])
+            
+        df = pd.read_excel(EXAMS_FILE, sheet_name='list')
+        print("✅ فایل آزمون با موفقیت بارگذاری شد")
+        
+        # اگر ستون‌های جدید وجود ندارند، اضافه کن
+        required_columns = ['ExamCode', 'ExamName', 'ExamType', 'BrandName', 'Description', 
+                          'CreatedDate', 'CreatedTime', 'CreatedBy']
+        
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = ''
+                print(f"➕ ستون {col} اضافه شد")
+        
+        # پاک کردن فاصله‌های اضافی
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].astype(str).str.strip()
+        
+        return df
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری فایل آزمون: {e}")
+        # در صورت خطا، یک DataFrame خالی برگردان
+        return pd.DataFrame(columns=[
+            'ExamCode', 'ExamName', 'ExamType', 'BrandName', 'Description',
+            'CreatedDate', 'CreatedTime', 'CreatedBy'
+        ])
+
+def save_exams_to_excel(df):
+    """ذخیره آزمون‌ها در فایل Excel"""
+    try:
+        # استفاده از ExcelWriter برای کنترل بهتر
+        with pd.ExcelWriter(EXAMS_FILE, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='list', index=False)
+        print("✅ فایل آزمون با موفقیت ذخیره شد")
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره فایل آزمون: {e}")
+        return False
+
+def generate_exam_code():
+    """تولید کد آزمون منحصر به فرد"""
+    try:
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        date_str = jalali_now.strftime('%Y%m%d')
+        
+        # بررسی آخرین کد آزمون امروز
+        exams_df = load_exams_from_excel()
+        if exams_df is not None and len(exams_df) > 0:
+            today_exams = exams_df[exams_df['ExamCode'].str.contains(f'EX-{date_str}', na=False)]
+            if len(today_exams) > 0:
+                last_number = len(today_exams) + 1
+            else:
+                last_number = 1
+        else:
+            last_number = 1
+        
+        exam_code = f"EX-{date_str}{last_number:03d}"
+        print(f"🆕 کد آزمون جدید: {exam_code}")
+        return exam_code
+        
+    except Exception as e:
+        print(f"❌ خطا در تولید کد آزمون: {e}")
+        # در صورت خطا، از timestamp استفاده کن
+        fallback_code = f"EX-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        return fallback_code
+
+# 3. Route های آزمون:
+
+@app.route('/exam_management')
+def exam_management():
+    """صفحه مدیریت آزمون - فقط برای ادمین"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # فقط ادمین می‌تونه این صفحه رو ببینه
+    if session['user_info']['Typev'] != 'admin':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    # ایجاد فایل اگر وجود نداشته باشد
+    create_exam_file_if_not_exists()
+    
+    # استفاده از فایل template
+    return render_template('exam_management.html', user=session['user_info'])
+
+@app.route('/create_exam_simple', methods=['POST'])
+def create_exam_simple():
+    """ایجاد آزمون ساده"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        data = request.get_json()
+        exam_name = data.get('exam_name', '').strip()
+        brand_name = data.get('brand_name', '').strip()
+        
+        if not exam_name or not brand_name:
+            return jsonify({'error': 'نام آزمون و برند الزامی است'}), 400
+        
+        print(f"🆕 Creating exam: {exam_name} for brand: {brand_name}")
+        
+        # تولید کد آزمون
+        exam_code = generate_exam_code()
+        
+        # تاریخ و ساعت فعلی
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        created_date = jalali_now.strftime('%Y/%m/%d')
+        created_time = now.strftime('%H:%M')
+        
+        # بارگذاری آزمون‌های موجود
+        exams_df = load_exams_from_excel()
+        
+        # ایجاد رکورد جدید
+        new_exam = pd.DataFrame([{
+            'ExamCode': exam_code,
+            'ExamName': exam_name,
+            'BrandName': brand_name,
+            'CreatedDate': created_date,
+            'CreatedTime': created_time,
+            'CreatedBy': session['user_info']['Codev']
+        }])
+        
+        # اضافه کردن به DataFrame موجود
+        exams_df = pd.concat([exams_df, new_exam], ignore_index=True)
+        
+        # ذخیره فایل
+        if save_exams_to_excel(exams_df):
+            print(f"✅ Exam created successfully: {exam_code}")
+            return jsonify({
+                'success': True,
+                'exam_code': exam_code,
+                'message': 'آزمون با موفقیت ایجاد شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره آزمون'}), 500
+        
+    except Exception as e:
+        print(f"❌ Error in create_exam_simple: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/get_exams_simple')
+def get_exams_simple():
+    """دریافت لیست آزمون‌ها - ساده"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # بارگذاری آزمون‌ها
+        exams_df = load_exams_from_excel()
+        
+        if len(exams_df) == 0:
+            return jsonify({'exams': []})
+        
+        # مرتب‌سازی بر اساس تاریخ (جدیدترین اول)
+        exams_df = exams_df.sort_values(['CreatedDate', 'CreatedTime'], ascending=[False, False])
+        
+        exams = []
+        for _, row in exams_df.iterrows():
+            exams.append({
+                'code': row['ExamCode'],
+                'name': row['ExamName'],
+                'brand': row['BrandName'],
+                'date': f"{row['CreatedDate']} {row.get('CreatedTime', '')}"
+            })
+        
+        return jsonify({'exams': exams})
+        
+    except Exception as e:
+        print(f"❌ Error in get_exams_simple: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+# این کد را به فایل app.py اضافه کنید
+
+@app.route('/get_brands_for_exam')
+def get_brands_for_exam():
+    """دریافت لیست برندها برای استفاده در آزمون"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # بارگذاری محصولات
+        products_df = load_products_from_excel()
+        if products_df is None:
+            return jsonify({'error': 'فایل محصولات یافت نشد'}), 500
+        
+        # دریافت لیست برندها (حذف تکراری و مرتب‌سازی)
+        brands = sorted(products_df['Brand'].unique().tolist())
+        
+        # حذف مقادیر خالی یا NaN
+        brands = [brand for brand in brands if str(brand) not in ['', 'nan', 'None']]
+        
+        print(f"🏷️ Brands found for exam: {brands}")
+        
+        return jsonify({
+            'success': True,
+            'brands': brands
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_brands_for_exam: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/get_exam_list')
+def get_exam_list():
+    """دریافت لیست آزمون‌های ایجاد شده"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # بارگذاری آزمون‌ها
+        exams_df = load_exams_from_excel()
+        
+        if len(exams_df) == 0:
+            return jsonify({'exams': []})
+        
+        # مرتب‌سازی بر اساس تاریخ (جدیدترین اول)
+        exams_df = exams_df.sort_values(['CreatedDate', 'CreatedTime'], ascending=[False, False])
+        
+        exams = []
+        for _, row in exams_df.iterrows():
+            exam_data = {
+                'exam_code': row.get('ExamCode', ''),
+                'exam_name': row.get('ExamName', ''),
+                'exam_type': row.get('ExamType', 'عمومی'),
+                'brand_name': row.get('BrandName', ''),
+                'description': row.get('Description', ''),
+                'created_date': f"{row.get('CreatedDate', '')} {row.get('CreatedTime', '')}"
+            }
+            exams.append(exam_data)
+        
+        return jsonify({
+            'success': True,
+            'exams': exams
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_exam_list: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+
+@app.route('/create_exam', methods=['POST'])
+def create_exam():
+    """ایجاد آزمون جدید با نوع آزمون"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        data = request.get_json()
+        exam_name = data.get('exam_name', '').strip()
+        exam_type = data.get('exam_type', '').strip()
+        brand_name = data.get('brand_name', '').strip()
+        description = data.get('description', '').strip()
+        
+        if not exam_name or not exam_type or not brand_name:
+            return jsonify({'error': 'نام آزمون، نوع آزمون و برند الزامی است'}), 400
+        
+        print(f"🆕 Creating exam: {exam_name} ({exam_type}) for brand: {brand_name}")
+        
+        # تولید کد آزمون
+        exam_code = generate_exam_code()
+        
+        # تاریخ و ساعت فعلی
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        created_date = jalali_now.strftime('%Y/%m/%d')
+        created_time = now.strftime('%H:%M')
+        
+        # بارگذاری آزمون‌های موجود
+        exams_df = load_exams_from_excel()
+        
+        # ایجاد رکورد جدید
+        new_exam = pd.DataFrame([{
+            'ExamCode': exam_code,
+            'ExamName': exam_name,
+            'ExamType': exam_type,
+            'BrandName': brand_name,
+            'Description': description,
+            'CreatedDate': created_date,
+            'CreatedTime': created_time,
+            'CreatedBy': session['user_info']['Codev']
+        }])
+        
+        # اضافه کردن به DataFrame موجود
+        exams_df = pd.concat([exams_df, new_exam], ignore_index=True)
+        
+        # ذخیره فایل
+        if save_exams_to_excel(exams_df):
+            print(f"✅ Exam created successfully: {exam_code}")
+            return jsonify({
+                'success': True,
+                'exam_code': exam_code,
+                'message': 'آزمون با موفقیت ایجاد شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره آزمون'}), 500
+        
+    except Exception as e:
+        print(f"❌ Error in create_exam: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+# این کدها را به فایل app.py اضافه کنید
+
+@app.route('/user_exam_list')
+def user_exam_list():
+    """صفحه لیست آزمون‌ها برای کاربران عادی"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # فقط کاربران عادی می‌توانند این صفحه را ببینند
+    if session['user_info']['Typev'] != 'user':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    return render_template('user_exam_list.html', user=session['user_info'])
+
+@app.route('/get_user_exams')
+def get_user_exams():
+    """دریافت لیست آزمون‌های موجود برای کاربران عادی"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'user':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        print(f"🎯 Loading exams for user: {session['user_info']['Namev']}")
+        
+        # بارگذاری آزمون‌ها
+        exams_df = load_exams_from_excel()
+        
+        if len(exams_df) == 0:
+            return jsonify({
+                'success': True,
+                'exams': [],
+                'message': 'هیچ آزمونی موجود نیست'
+            })
+        
+        # مرتب‌سازی بر اساس تاریخ (جدیدترین اول)
+        exams_df = exams_df.sort_values(['CreatedDate', 'CreatedTime'], ascending=[False, False])
+        
+        # تبدیل به لیست برای نمایش به کاربر
+        user_exams = []
+        for _, row in exams_df.iterrows():
+            exam_data = {
+                'exam_code': row.get('ExamCode', ''),
+                'exam_name': row.get('ExamName', ''),
+                'exam_type': row.get('ExamType', 'عمومی'),
+                'brand_name': row.get('BrandName', ''),
+                'description': row.get('Description', ''),
+                'created_date': row.get('CreatedDate', ''),
+                'created_time': row.get('CreatedTime', ''),
+                'status': 'available'  # فعلاً همه آزمون‌ها در دسترس هستند
+            }
+            user_exams.append(exam_data)
+        
+        print(f"📋 Found {len(user_exams)} exams for user")
+        
+        return jsonify({
+            'success': True,
+            'exams': user_exams,
+            'total_count': len(user_exams)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_user_exams: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+
+@app.route('/exam_info/<exam_code>')
+def exam_info(exam_code):
+    """نمایش جزئیات آزمون"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        # بارگذاری اطلاعات آزمون
+        exams_df = load_exams_from_excel()
+        exam = exams_df[exams_df['ExamCode'] == exam_code]
+        
+        if exam.empty:
+            return jsonify({'error': 'آزمون یافت نشد'}), 404
+        
+        exam_info = exam.iloc[0]
+        
+        return jsonify({
+            'success': True,
+            'exam': {
+                'exam_code': exam_info.get('ExamCode', ''),
+                'exam_name': exam_info.get('ExamName', ''),
+                'exam_type': exam_info.get('ExamType', 'عمومی'),
+                'brand_name': exam_info.get('BrandName', ''),
+                'description': exam_info.get('Description', ''),
+                'created_date': exam_info.get('CreatedDate', ''),
+                'created_time': exam_info.get('CreatedTime', ''),
+                'created_by': exam_info.get('CreatedBy', '')
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in exam_info: {str(e)}")
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+# این کدها را به فایل app.py اضافه کنید
+
+def save_exam_result_to_excel(result_data):
+    """ذخیره نتیجه آزمون در فایل azmon.xlsx شیت azmon"""
+    try:
+        # بررسی وجود فایل و شیت
+        if os.path.exists(EXAMS_FILE):
+            with pd.ExcelFile(EXAMS_FILE) as xls:
+                if 'azmon' in xls.sheet_names:
+                    # بارگذاری داده‌های موجود
+                    results_df = pd.read_excel(EXAMS_FILE, sheet_name='azmon')
+                else:
+                    # ایجاد DataFrame جدید
+                    results_df = pd.DataFrame(columns=[
+                        'ExamResultCode', 'ExamCode', 'BazaryabCode', 'BazaryabName',
+                        'ExamDate', 'ExamTime', 'TotalQuestions', 'CorrectAnswers', 
+                        'WrongAnswers', 'Score', 'Percentage', 'TimeTaken', 'ExamType',
+                        'BrandName', 'ResultDescription'
+                    ])
+        else:
+            # ایجاد DataFrame جدید
+            results_df = pd.DataFrame(columns=[
+                'ExamResultCode', 'ExamCode', 'BazaryabCode', 'BazaryabName',
+                'ExamDate', 'ExamTime', 'TotalQuestions', 'CorrectAnswers', 
+                'WrongAnswers', 'Score', 'Percentage', 'TimeTaken', 'ExamType',
+                'BrandName', 'ResultDescription'
+            ])
+        
+        # ایجاد رکورد جدید
+        new_result = pd.DataFrame([result_data])
+        results_df = pd.concat([results_df, new_result], ignore_index=True)
+        
+        # ذخیره در فایل
+        if os.path.exists(EXAMS_FILE):
+            # بارگذاری سایر شیت‌ها
+            with pd.ExcelFile(EXAMS_FILE) as xls:
+                sheets_dict = {}
+                for sheet_name in xls.sheet_names:
+                    if sheet_name != 'azmon':
+                        sheets_dict[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name)
+            
+            # ذخیره همه شیت‌ها
+            with pd.ExcelWriter(EXAMS_FILE, engine='openpyxl') as writer:
+                for sheet_name, df in sheets_dict.items():
+                    df.to_excel(writer, sheet_name=sheet_name, index=False)
+                results_df.to_excel(writer, sheet_name='azmon', index=False)
+        else:
+            # ایجاد فایل جدید
+            with pd.ExcelWriter(EXAMS_FILE, engine='openpyxl') as writer:
+                results_df.to_excel(writer, sheet_name='azmon', index=False)
+                # ایجاد شیت list خالی
+                pd.DataFrame().to_excel(writer, sheet_name='list', index=False)
+        
+        print(f"✅ Exam result saved: {result_data['ExamResultCode']}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error saving exam result: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def generate_exam_result_code():
+    """تولید کد نتیجه آزمون منحصر به فرد"""
+    try:
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        date_str = jalali_now.strftime('%Y%m%d')
+        time_str = now.strftime('%H%M%S')
+        
+        return f"ER-{date_str}{time_str}"
+        
+    except Exception as e:
+        print(f"❌ Error generating result code: {e}")
+        return f"ER-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+@app.route('/take_exam/<exam_code>')
+def take_exam(exam_code):
+    """ورود به آزمون - تشخیص نوع آزمون"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # فقط کاربران عادی می‌توانند آزمون بدهند
+    if session['user_info']['Typev'] != 'user':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        # بارگذاری اطلاعات آزمون
+        exams_df = load_exams_from_excel()
+        exam = exams_df[exams_df['ExamCode'] == exam_code]
+        
+        if exam.empty:
+            flash('آزمون مورد نظر یافت نشد!', 'error')
+            return redirect(url_for('user_exam_list'))
+        
+        exam_info = exam.iloc[0].to_dict()
+        exam_type = exam_info.get('ExamType', 'عمومی')
+        
+        print(f"🎯 User {session['user_info']['Namev']} starting exam: {exam_code} (Type: {exam_type})")
+        
+        # تشخیص نوع آزمون و هدایت به صفحه مناسب
+        if exam_type == 'محصولات':
+            return render_template('product_exam.html', 
+                                 exam=exam_info, 
+                                 user=session['user_info'])
+        else:
+            # سایر انواع آزمون (فعلاً placeholder)
+            return render_template('take_exam.html', 
+                                 exam=exam_info, 
+                                 user=session['user_info'])
+        
+    except Exception as e:
+        print(f"❌ Error in take_exam: {str(e)}")
+        flash('خطا در بارگذاری آزمون!', 'error')
+        return redirect(url_for('user_exam_list'))
+
+@app.route('/get_exam_products/<exam_code>')
+def get_exam_products(exam_code):
+    """دریافت محصولات برند آزمون برای آزمون محصولات"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'user':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        print(f"📦 Loading products for exam: {exam_code}")
+        
+        # بارگذاری اطلاعات آزمون
+        exams_df = load_exams_from_excel()
+        exam = exams_df[exams_df['ExamCode'] == exam_code]
+        
+        if exam.empty:
+            return jsonify({'error': 'آزمون یافت نشد'}), 404
+        
+        exam_info = exam.iloc[0]
+        brand_name = exam_info.get('BrandName', '')
+        
+        if not brand_name:
+            return jsonify({'error': 'برند آزمون مشخص نیست'}), 400
+        
+        # بارگذاری محصولات این برند
+        products_df = load_products_from_excel()
+        if products_df is None:
+            return jsonify({'error': 'فایل محصولات یافت نشد'}), 500
+        
+        # فیلتر محصولات بر اساس برند
+        brand_products = products_df[products_df['Brand'] == brand_name]
+        
+        if brand_products.empty:
+            return jsonify({'error': f'هیچ محصولی برای برند {brand_name} یافت نشد'}), 404
+        
+        # تبدیل به لیست
+        products_list = []
+        for _, product in brand_products.iterrows():
+            # تنها محصولاتی که دارای عکس هستند (اختیاری)
+            products_list.append({
+                'ProductCode': product.get('ProductCode', ''),
+                'ProductName': product.get('ProductName', ''),
+                'Category': product.get('Category', ''),
+                'Brand': product.get('Brand', ''),
+                'Price': float(product.get('Price', 0)) if not pd.isna(product.get('Price', 0)) else 0,
+                'ImageFile': product.get('ImageFile', 'null.jpg'),
+                'Description': product.get('Description', '')
+            })
+        
+        print(f"✅ Found {len(products_list)} products for brand {brand_name}")
+        
+        return jsonify({
+            'success': True,
+            'products': products_list,
+            'brand_name': brand_name,
+            'exam_code': exam_code
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_exam_products: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/submit_product_exam', methods=['POST'])
+def submit_product_exam():
+    """ثبت نتیجه آزمون محصولات"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'user':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        data = request.get_json()
+        exam_code = data.get('exam_code')
+        matches = data.get('matches', {})
+        time_taken = data.get('time_taken', 0)
+        
+        if not exam_code or not matches:
+            return jsonify({'error': 'داده‌های آزمون ناقص است'}), 400
+        
+        print(f"📝 Processing exam submission: {exam_code}")
+        print(f"👤 User: {session['user_info']['Namev']}")
+        print(f"⏱️ Time taken: {time_taken} seconds")
+        
+        # بارگذاری اطلاعات آزمون
+        exams_df = load_exams_from_excel()
+        exam = exams_df[exams_df['ExamCode'] == exam_code]
+        
+        if exam.empty:
+            return jsonify({'error': 'آزمون یافت نشد'}), 404
+        
+        exam_info = exam.iloc[0]
+        brand_name = exam_info.get('BrandName', '')
+        
+        # بارگذاری محصولات برند
+        products_df = load_products_from_excel()
+        brand_products = products_df[products_df['Brand'] == brand_name]
+        
+        # محاسبه نتایج
+        total_questions = len(brand_products)
+        correct_answers = 0
+        wrong_answers = 0
+        
+        # بررسی پاسخ‌ها
+        for target_code, selected_code in matches.items():
+            if target_code == selected_code:
+                correct_answers += 1
+            else:
+                wrong_answers += 1
+        
+        # محاسبه امتیاز
+        percentage = (correct_answers / total_questions * 100) if total_questions > 0 else 0
+        score = round(percentage)
+        
+        # تعیین وضعیت و توضیحات
+        if percentage >= 80:
+            result_description = f"عالی! شما {correct_answers} از {total_questions} محصول را به درستی تشخیص دادید."
+        elif percentage >= 60:
+            result_description = f"خوب! شما {correct_answers} از {total_questions} محصول را به درستی تشخیص دادید."
+        else:
+            result_description = f"نیاز به تلاش بیشتر. شما {correct_answers} از {total_questions} محصول را به درستی تشخیص دادید."
+        
+        # ایجاد کد نتیجه
+        result_code = generate_exam_result_code()
+        
+        # تاریخ و ساعت فعلی
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        exam_date = jalali_now.strftime('%Y/%m/%d')
+        exam_time = now.strftime('%H:%M')
+        
+        # ایجاد داده نتیجه
+        result_data = {
+            'ExamResultCode': result_code,
+            'ExamCode': exam_code,
+            'BazaryabCode': session['user_info']['Codev'],
+            'BazaryabName': session['user_info']['Namev'],
+            'ExamDate': exam_date,
+            'ExamTime': exam_time,
+            'TotalQuestions': total_questions,
+            'CorrectAnswers': correct_answers,
+            'WrongAnswers': wrong_answers,
+            'Score': score,
+            'Percentage': round(percentage, 1),
+            'TimeTaken': f"{time_taken // 60}:{time_taken % 60:02d}",
+            'ExamType': exam_info.get('ExamType', 'محصولات'),
+            'BrandName': brand_name,
+            'ResultDescription': result_description
+        }
+        
+        # ذخیره در فایل
+        if save_exam_result_to_excel(result_data):
+            print(f"✅ Exam result saved successfully for {session['user_info']['Namev']}")
+            
+            return jsonify({
+                'success': True,
+                'result_code': result_code,
+                'total_questions': total_questions,
+                'correct_answers': correct_answers,
+                'wrong_answers': wrong_answers,
+                'score': score,
+                'percentage': round(percentage, 1),
+                'time_taken': f"{time_taken // 60}:{time_taken % 60:02d}",
+                'description': result_description
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره نتیجه آزمون'}), 500
+        
+    except Exception as e:
+        print(f"❌ Error in submit_product_exam: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+# این کدها را به فایل app.py اضافه کنید
+
+@app.route('/exam_performance_report')
+def exam_performance_report():
+    """گزارش عملکرد بازاریابان در آزمون‌ها - فقط برای ادمین"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # فقط ادمین می‌تونه این گزارش رو ببینه
+    if session['user_info']['Typev'] != 'admin':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    return render_template('exam_performance_report.html', user=session['user_info'])
+
+def load_exam_results_from_excel():
+    """بارگذاری نتایج آزمون‌ها از فایل azmon.xlsx شیت azmon"""
+    try:
+        if not os.path.exists(EXAMS_FILE):
+            return pd.DataFrame()
+            
+        # بررسی وجود شیت azmon
+        with pd.ExcelFile(EXAMS_FILE) as xls:
+            if 'azmon' not in xls.sheet_names:
+                return pd.DataFrame()
+        
+        df = pd.read_excel(EXAMS_FILE, sheet_name='azmon')
+        print(f"✅ Exam results loaded: {len(df)} records")
+        
+        # پاک کردن فاصله‌های اضافی
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].astype(str).str.strip()
+        
+        return df
+        
+    except Exception as e:
+        print(f"❌ Error loading exam results: {e}")
+        return pd.DataFrame()
+
+@app.route('/get_exam_performance_report', methods=['POST'])
+def get_exam_performance_report():
+    """دریافت داده‌های گزارش عملکرد آزمون بازاریابان"""
+    try:
+        # چک احراز هویت
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        # فقط ادمین
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # دریافت داده‌های POST
+        data = request.get_json()
+        date_from = data.get('date_from', '').strip()
+        date_to = data.get('date_to', '').strip()
+        exam_type_filter = data.get('exam_type', 'all')
+        brand_filter = data.get('brand', 'all')
+        
+        print(f"🎯 Exam performance report: {date_from} to {date_to}")
+        print(f"📝 Filters: type={exam_type_filter}, brand={brand_filter}")
+        
+        # تبدیل تاریخ به میلادی اگر لازم باشه
+        date_from_gregorian = None
+        date_to_gregorian = None
+        
+        if date_from and date_to:
+            date_from_gregorian = jalali_to_gregorian(date_from)
+            date_to_gregorian = jalali_to_gregorian(date_to)
+            
+            if not date_from_gregorian or not date_to_gregorian:
+                return jsonify({'error': 'فرمت تاریخ نامعتبر است'}), 400
+        
+        # بارگذاری داده‌ها
+        exam_results_df = load_exam_results_from_excel()
+        users_df = load_users_from_excel()
+        exams_df = load_exams_from_excel()
+        
+        if exam_results_df.empty:
+            return jsonify({
+                'success': True,
+                'salespeople': [],
+                'summary': {
+                    'total_participants': 0,
+                    'total_exams': 0,
+                    'average_score': 0,
+                    'pass_rate': 0
+                },
+                'message': 'هیچ نتیجه آزمونی یافت نشد'
+            })
+        
+        print(f"📊 Found {len(exam_results_df)} exam results")
+        
+        # فیلتر بر اساس تاریخ
+        if date_from_gregorian and date_to_gregorian:
+            def convert_exam_date_to_gregorian(date_value):
+                if pd.isna(date_value):
+                    return None
+                date_str = str(date_value).strip()
+                if '/' in date_str and len(date_str.split('/')) == 3:
+                    return jalali_to_gregorian(date_str)
+                return None
+            
+            exam_results_df['ExamDateConverted'] = exam_results_df['ExamDate'].apply(convert_exam_date_to_gregorian)
+            
+            filtered_results = exam_results_df[
+                (exam_results_df['ExamDateConverted'] >= date_from_gregorian) &
+                (exam_results_df['ExamDateConverted'] <= date_to_gregorian)
+            ]
+        else:
+            filtered_results = exam_results_df
+        
+        # فیلتر بر اساس نوع آزمون
+        if exam_type_filter != 'all':
+            filtered_results = filtered_results[filtered_results['ExamType'] == exam_type_filter]
+        
+        # فیلتر بر اساس برند
+        if brand_filter != 'all':
+            filtered_results = filtered_results[filtered_results['BrandName'] == brand_filter]
+        
+        print(f"🔍 After filtering: {len(filtered_results)} results")
+        
+        if filtered_results.empty:
+            return jsonify({
+                'success': True,
+                'salespeople': [],
+                'summary': {
+                    'total_participants': 0,
+                    'total_exams': 0,
+                    'average_score': 0,
+                    'pass_rate': 0
+                },
+                'message': 'هیچ نتیجه‌ای در این بازه زمانی یافت نشد'
+            })
+        
+        # تجمیع نتایج بر اساس بازاریاب
+        salesperson_performance = {}
+        
+        for _, result in filtered_results.iterrows():
+            bazaryab_code = result['BazaryabCode']
+            bazaryab_name = result.get('BazaryabName', 'نامشخص')
+            
+            if bazaryab_code not in salesperson_performance:
+                salesperson_performance[bazaryab_code] = {
+                    'salesperson_code': bazaryab_code,
+                    'salesperson_name': bazaryab_name,
+                    'total_exams': 0,
+                    'total_score': 0,
+                    'scores': [],
+                    'exam_details': [],
+                    'passed_exams': 0,
+                    'excellent_scores': 0,  # نمرات بالای 80
+                    'good_scores': 0,       # نمرات 60-80
+                    'poor_scores': 0        # نمرات زیر 60
+                }
+            
+            # اضافه کردن نتیجه
+            score = float(result.get('Score', 0)) if not pd.isna(result.get('Score', 0)) else 0
+            percentage = float(result.get('Percentage', 0)) if not pd.isna(result.get('Percentage', 0)) else 0
+            
+            salesperson_performance[bazaryab_code]['total_exams'] += 1
+            salesperson_performance[bazaryab_code]['total_score'] += score
+            salesperson_performance[bazaryab_code]['scores'].append(score)
+            
+            # دسته‌بندی نمرات
+            if percentage >= 80:
+                salesperson_performance[bazaryab_code]['excellent_scores'] += 1
+            elif percentage >= 60:
+                salesperson_performance[bazaryab_code]['good_scores'] += 1
+            else:
+                salesperson_performance[bazaryab_code]['poor_scores'] += 1
+            
+            # آزمون‌های قبولی (نمره بالای 60)
+            if percentage >= 60:
+                salesperson_performance[bazaryab_code]['passed_exams'] += 1
+            
+            # جزئیات آزمون
+            salesperson_performance[bazaryab_code]['exam_details'].append({
+                'exam_code': result.get('ExamCode', ''),
+                'exam_date': result.get('ExamDate', ''),
+                'exam_type': result.get('ExamType', ''),
+                'brand_name': result.get('BrandName', ''),
+                'score': int(score),
+                'percentage': round(percentage, 1),
+                'total_questions': int(result.get('TotalQuestions', 0)),
+                'correct_answers': int(result.get('CorrectAnswers', 0)),
+                'time_taken': result.get('TimeTaken', '')
+            })
+        
+        # محاسبه آمار نهایی و مرتب‌سازی
+        salespeople_list = []
+        total_all_scores = 0
+        total_all_exams = 0
+        total_passed = 0
+        
+        for sp_data in salesperson_performance.values():
+            # محاسبه میانگین
+            avg_score = sp_data['total_score'] / sp_data['total_exams'] if sp_data['total_exams'] > 0 else 0
+            pass_rate = (sp_data['passed_exams'] / sp_data['total_exams'] * 100) if sp_data['total_exams'] > 0 else 0
+            
+            # مرتب‌سازی جزئیات آزمون‌ها بر اساس تاریخ (جدیدترین اول)
+            sp_data['exam_details'].sort(key=lambda x: x['exam_date'], reverse=True)
+            
+            salespeople_list.append({
+                'salesperson_code': sp_data['salesperson_code'],
+                'salesperson_name': sp_data['salesperson_name'],
+                'total_exams': sp_data['total_exams'],
+                'average_score': round(avg_score, 1),
+                'passed_exams': sp_data['passed_exams'],
+                'pass_rate': round(pass_rate, 1),
+                'excellent_scores': sp_data['excellent_scores'],
+                'good_scores': sp_data['good_scores'],
+                'poor_scores': sp_data['poor_scores'],
+                'exam_details': sp_data['exam_details']
+            })
+            
+            # آمار کلی
+            total_all_scores += sp_data['total_score']
+            total_all_exams += sp_data['total_exams']
+            total_passed += sp_data['passed_exams']
+        
+        # مرتب‌سازی بر اساس میانگین نمره (بالا به پایین)
+        salespeople_list.sort(key=lambda x: x['average_score'], reverse=True)
+        
+        # آمار کلی
+        overall_average = total_all_scores / total_all_exams if total_all_exams > 0 else 0
+        overall_pass_rate = (total_passed / total_all_exams * 100) if total_all_exams > 0 else 0
+        
+        summary_stats = {
+            'total_participants': len(salespeople_list),
+            'total_exams': total_all_exams,
+            'average_score': round(overall_average, 1),
+            'pass_rate': round(overall_pass_rate, 1)
+        }
+        
+        print(f"✅ Exam performance analysis complete:")
+        print(f"   Participants: {len(salespeople_list)}")
+        print(f"   Total exams: {total_all_exams}")
+        print(f"   Average score: {overall_average:.1f}")
+        print(f"   Pass rate: {overall_pass_rate:.1f}%")
+        
+        return jsonify({
+            'success': True,
+            'salespeople': salespeople_list,
+            'summary': summary_stats,
+            'date_from': date_from,
+            'date_to': date_to,
+            'filters': {
+                'exam_type': exam_type_filter,
+                'brand': brand_filter
+            },
+            'period_info': f"{date_from} تا {date_to}" if date_from and date_to else "تمام دوره‌ها"
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_exam_performance_report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/get_exam_filters')
+def get_exam_filters():
+    """دریافت فیلترهای آزمون (انواع آزمون و برندها)"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        if session['user_info']['Typev'] != 'admin':
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # بارگذاری آزمون‌ها
+        exams_df = load_exams_from_excel()
+        
+        if exams_df.empty:
+            return jsonify({
+                'exam_types': [],
+                'brands': []
+            })
+        
+        # دریافت انواع آزمون
+        exam_types = sorted(exams_df['ExamType'].dropna().unique().tolist())
+        
+        # دریافت برندها
+        brands = sorted(exams_df['BrandName'].dropna().unique().tolist())
+        
+        return jsonify({
+            'exam_types': exam_types,
+            'brands': brands
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_exam_filters: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# ===============================
+# پایان کدهای آزمون
+# ===============================
 
 if __name__ == '__main__':
     #print("🚀 Starting enhanced Flask application...")
