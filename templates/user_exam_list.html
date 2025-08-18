@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>آزمون‌ها</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            padding: 30px;
+            max-width: 1200px;
+        }
+        
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(255, 152, 0, 0.3);
+        }
+        
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .back-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: linear-gradient(45deg, #7f8c8d, #95a5a6);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+        
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .exam-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            position: relative;
+        }
+        
+        .exam-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            border-color: #ff9800;
+        }
+        
+        .exam-card-header {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .exam-code {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        
+        .exam-type-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+        
+        .exam-card-body {
+            padding: 25px;
+        }
+        
+        .exam-name {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .exam-details {
+            margin-bottom: 20px;
+        }
+        
+        .exam-detail-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #666;
+        }
+        
+        .exam-detail-item i {
+            width: 20px;
+            margin-left: 10px;
+            color: #ff9800;
+        }
+        
+        .exam-description {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #666;
+            border-right: 4px solid #ff9800;
+            margin-bottom: 15px;
+        }
+        
+        .exam-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .start-exam-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .start-exam-btn:hover {
+            background: linear-gradient(45deg, #20c997, #28a745);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .exam-info-btn {
+            background: linear-gradient(45deg, #17a2b8, #138496);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .exam-info-btn:hover {
+            background: linear-gradient(45deg, #138496, #17a2b8);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+        
+        .no-exams {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .no-exams i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #ff9800;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #ff9800;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .stats-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ff9800;
+            display: block;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .page-header h1 {
+                font-size: 2rem;
+            }
+            
+            .exam-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .exam-actions {
+                flex-direction: column;
+            }
+            
+            .stats-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <a href="{{ url_for('index') }}" class="back-btn">
+            <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
+        </a>
+        
+        <div class="page-header">
+            <h1><i class="fas fa-clipboard-check"></i> آزمون‌ها</h1>
+            <p>آزمون‌های در دسترس برای شما</p>
+        </div>
+        
+        <!-- پیام‌های سیستم -->
+        <div id="messageArea"></div>
+        
+        <!-- آمار کلی -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-number" id="totalExams">-</span>
+                <div class="stat-label">کل آزمون‌ها</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="availableExams">-</span>
+                <div class="stat-label">آزمون‌های فعال</div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number" id="completedExams">0</span>
+                <div class="stat-label">آزمون‌های تکمیل شده</div>
+            </div>
+        </div>
+        
+        <!-- لیست آزمون‌ها -->
+        <div id="examListContainer">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>در حال بارگذاری آزمون‌ها...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // بارگذاری اولیه
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserExams();
+        });
+        
+        // بارگذاری آزمون‌های کاربر
+        async function loadUserExams() {
+            try {
+                const response = await fetch('/get_user_exams');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayExams(data.exams || []);
+                updateStats(data.exams || []);
+                
+            } catch (error) {
+                console.error('Error loading exams:', error);
+                showError('خطا در بارگذاری آزمون‌ها. لطفاً صفحه را مجدداً بارگذاری کنید.');
+            }
+        }
+        
+        // نمایش آزمون‌ها
+        function displayExams(exams) {
+            const container = document.getElementById('examListContainer');
+            
+            if (!exams || exams.length === 0) {
+                container.innerHTML = `
+                    <div class="no-exams">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h3>هیچ آزمونی در حال حاضر موجود نیست</h3>
+                        <p>لطفاً بعداً مراجعه کنید یا با مدیر سیستم تماس بگیرید.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="exam-grid">';
+            
+            exams.forEach(exam => {
+                // تعیین رنگ badge بر اساس نوع آزمون
+                let badgeClass = '';
+                switch(exam.exam_type) {
+                    case 'محصولات': badgeClass = 'bg-primary'; break;
+                    case 'برند': badgeClass = 'bg-success'; break;
+                    case 'عمومی': badgeClass = 'bg-info'; break;
+                    case 'تخصصی': badgeClass = 'bg-warning text-dark'; break;
+                    case 'فروش': badgeClass = 'bg-danger'; break;
+                    case 'مهارت': badgeClass = 'bg-secondary'; break;
+                    case 'دانش': badgeClass = 'bg-dark'; break;
+                    default: badgeClass = 'bg-light text-dark';
+                }
+                
+                html += `
+                    <div class="exam-card">
+                        <div class="exam-card-header">
+                            <div class="exam-type-badge ${badgeClass}">
+                                ${exam.exam_type || 'عمومی'}
+                            </div>
+                            <div class="exam-code">${exam.exam_code}</div>
+                        </div>
+                        
+                        <div class="exam-card-body">
+                            <h3 class="exam-name">${exam.exam_name}</h3>
+                            
+                            <div class="exam-details">
+                                <div class="exam-detail-item">
+                                    <i class="fas fa-tag"></i>
+                                    <span>برند: ${exam.brand_name}</span>
+                                </div>
+                                <div class="exam-detail-item">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span>تاریخ ایجاد: ${exam.created_date}</span>
+                                </div>
+                            </div>
+                            
+                            ${exam.description ? `
+                                <div class="exam-description">
+                                    <i class="fas fa-info-circle"></i>
+                                    ${exam.description}
+                                </div>
+                            ` : ''}
+                            
+                            <div class="exam-actions">
+                                <a href="/take_exam/${exam.exam_code}" class="start-exam-btn">
+                                    <i class="fas fa-play"></i>
+                                    شروع آزمون
+                                </a>
+                                <button class="exam-info-btn" onclick="showExamInfo('${exam.exam_code}')">
+                                    <i class="fas fa-info"></i>
+                                    جزئیات
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+        
+        // آپدیت آمار
+        function updateStats(exams) {
+            document.getElementById('totalExams').textContent = exams.length;
+            document.getElementById('availableExams').textContent = exams.length;
+            // آمار تکمیل شده فعلاً صفر (بعداً پیاده‌سازی می‌شود)
+        }
+        
+        // نمایش جزئیات آزمون
+        function showExamInfo(examCode) {
+            // فعلاً یک alert ساده - بعداً modal پیاده‌سازی می‌شود
+            alert(`جزئیات آزمون ${examCode}\n\nاین قابلیت به زودی اضافه خواهد شد.`);
+        }
+        
+        // نمایش پیام خطا
+        function showError(message) {
+            const messageArea = document.getElementById('messageArea');
+            messageArea.innerHTML = `
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i> ${message}
+                </div>
+            `;
+            
+            // مخفی کردن محتوای بارگذاری
+            document.getElementById('examListContainer').innerHTML = `
+                <div class="no-exams">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>خطا در بارگذاری</h3>
+                    <p>لطفاً صفحه را مجدداً بارگذاری کنید.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

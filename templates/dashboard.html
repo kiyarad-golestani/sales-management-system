@@ -169,6 +169,15 @@
 						<a href="{{ url_for('product_analysis') }}" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none;">
 							<i class="fas fa-crown"></i> شروع تحلیل
 						</a>
+						<!-- 🆕 آزمون -->
+						<a href="{{ url_for('exam_management') }}" style="background: linear-gradient(45deg, #dc3545, #c82333); color: white; border: none;">
+							<i class="fas fa-crown"></i> آزمون
+						</a>
+						<!-- 🆕 گزارش عملکرد آزمون بازاریابان -->
+						<a href="{{ url_for('exam_performance_report') }}" style="background: linear-gradient(45deg, #8B5CF6, #A855F7); color: white; border: none;">
+							<i class="fas fa-clipboard-check"></i> عملکرد آزمون بازاریابان
+						</a>
+
 
 					{% endif %}
 
@@ -184,6 +193,11 @@
 							<i class="fas fa-tags"></i>  مشاهده عملکرد من
 								</a>
 						</a>
+						<!-- 🆕 آزمون برای کاربران عادی -->
+						<a href="{{ url_for('user_exam_list') }}" style="background: linear-gradient(45deg, #ff9800, #f57c00); color: white; border: none;">
+							<i class="fas fa-clipboard-check"></i> آزمون‌ها
+						</a>
+						
 					{% endif %}				
 					
 					

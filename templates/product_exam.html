@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>آزمون محصولات: {{ exam.ExamName }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .exam-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            padding: 0;
+            max-width: 1400px;
+            overflow: hidden;
+        }
+        
+        .exam-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .exam-info h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+        
+        .exam-details {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .exam-progress {
+            text-align: left;
+            min-width: 200px;
+        }
+        
+        .timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .progress-info {
+            font-size: 0.9rem;
+        }
+        
+        .exam-content {
+            padding: 30px;
+        }
+        
+        .exam-instructions {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .exam-instructions h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .product-image-card {
+            background: white;
+            border: 3px solid #e9ecef;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .product-image-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .product-image-card.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .product-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .product-placeholder {
+            width: 100%;
+            height: 150px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            color: #6c757d;
+        }
+        
+        .product-id {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        
+        .product-names-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .product-names-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .product-name-item {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            user-select: none;
+            position: relative;
+        }
+        
+        .product-name-item:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .product-name-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+            cursor: grabbing;
+        }
+        
+        .product-name-item.used {
+            background: #d4edda;
+            border-color: #28a745;
+            opacity: 0.7;
+        }
+        
+        .product-name {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .product-category {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        
+        .drop-zone {
+            min-height: 50px;
+            border: 2px dashed #28a745;
+            border-radius: 8px;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8fff9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #28a745;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.drag-over {
+            background: #e8f5e8;
+            transform: scale(1.05);
+        }
+        
+        .drop-zone.filled {
+            background: #d4edda;
+            border-style: solid;
+        }
+        
+        .dropped-item {
+            background: #28a745;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .remove-match {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.7rem;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .submit-exam-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            width: 100%;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .submit-exam-btn:hover {
+            background: linear-gradient(45deg, #20c997, #28a745);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+        
+        .submit-exam-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .completion-status {
+            background: white;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .completion-status.complete {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .results-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .results-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+        }
+        
+        .results-header {
+            margin-bottom: 30px;
+        }
+        
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .score-excellent { background: linear-gradient(45deg, #28a745, #20c997); }
+        .score-good { background: linear-gradient(45deg, #ffc107, #fd7e14); }
+        .score-poor { background: linear-gradient(45deg, #dc3545, #e91e63); }
+        
+        .results-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #495057;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .exam-container {
+                margin: 10px;
+            }
+            
+            .exam-content {
+                padding: 20px;
+            }
+            
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+            
+            .product-names-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .exam-header {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="exam-container">
+        <!-- هدر آزمون -->
+        <div class="exam-header">
+            <div class="exam-info">
+                <h1>{{ exam.ExamName }}</h1>
+                <div class="exam-details">
+                    کد آزمون: {{ exam.ExamCode }} | برند: {{ exam.BrandName }}
+                </div>
+            </div>
+            <div class="exam-progress">
+                <div class="timer" id="timer">--:--</div>
+                <div class="progress-info">
+                    <span id="completedCount">0</span> از <span id="totalCount">0</span> تطبیق
+                </div>
+            </div>
+        </div>
+        
+        <!-- محتوای آزمون -->
+        <div class="exam-content">
+            <!-- دستورالعمل -->
+            <div class="exam-instructions">
+                <h3><i class="fas fa-info-circle"></i> آزمون تطبیق محصولات</h3>
+                <p>
+                    هر نام محصول را با تصویر مربوطه تطبیق دهید. برای این کار نام محصول را به قسمت زیر تصویر بکشید.
+                    <br>
+                    <strong>نکته:</strong> هر نام فقط یک بار قابل استفاده است.
+                </p>
+            </div>
+            
+            <!-- وضعیت تکمیل -->
+            <div class="completion-status" id="completionStatus">
+                <i class="fas fa-hourglass-half"></i>
+                آزمون در حال انجام - <span id="completionText">هنوز شروع نشده</span>
+            </div>
+            
+            <!-- بارگذاری -->
+            <div id="loadingArea" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">در حال بارگذاری...</span>
+                </div>
+                <p class="mt-3">در حال بارگذاری محصولات...</p>
+            </div>
+            
+            <!-- محتوای اصلی آزمون -->
+            <div id="examMainContent" style="display: none;">
+                <!-- تصاویر محصولات -->
+                <h4><i class="fas fa-images"></i> تصاویر محصولات</h4>
+                <div class="products-grid" id="productsGrid">
+                    <!-- تصاویر اینجا بارگذاری می‌شوند -->
+                </div>
+                
+                <!-- نام‌های محصولات -->
+                <div class="product-names-section">
+                    <h4><i class="fas fa-list"></i> نام‌های محصولات</h4>
+                    <div class="product-names-grid" id="productNamesGrid">
+                        <!-- نام‌ها اینجا بارگذاری می‌شوند -->
+                    </div>
+                </div>
+                
+                <!-- دکمه تایید -->
+                <button class="submit-exam-btn" id="submitExamBtn" onclick="submitExam()" disabled>
+                    <i class="fas fa-check-circle"></i>
+                    تایید و دریافت نتیجه
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- مودال نتایج -->
+    <div class="results-modal" id="resultsModal">
+        <div class="results-content">
+            <div class="results-header">
+                <div class="score-circle" id="scoreCircle">
+                    <span id="scorePercentage">0%</span>
+                </div>
+                <h2 id="resultTitle">نتیجه آزمون</h2>
+                <p id="resultMessage"></p>
+            </div>
+            
+            <div class="results-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalQuestions">0</div>
+                    <div class="stat-label">کل سوالات</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="correctAnswers">0</div>
+                    <div class="stat-label">پاسخ صحیح</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="wrongAnswers">0</div>
+                    <div class="stat-label">پاسخ غلط</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="finalScore">0</div>
+                    <div class="stat-label">امتیاز نهایی</div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button class="btn btn-primary btn-lg" onclick="goBackToExamList()">
+                    <i class="fas fa-list"></i> بازگشت به لیست آزمون‌ها
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let examData = {
+            examCode: '{{ exam.ExamCode }}',
+            examName: '{{ exam.ExamName }}',
+            brandName: '{{ exam.BrandName }}',
+            userCode: '{{ user.Codev }}',
+            userName: '{{ user.Namev }}'
+        };
+        
+        let products = [];
+        let matches = {};
+        let startTime = new Date();
+        let timerInterval;
+        
+        // بارگذاری اولیه
+        document.addEventListener('DOMContentLoaded', function() {
+            loadExamProducts();
+            startTimer();
+        });
+        
+        // بارگذاری محصولات آزمون
+        async function loadExamProducts() {
+            try {
+                const response = await fetch(`/get_exam_products/${examData.examCode}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    products = data.products;
+                    renderExam();
+                } else {
+                    showError(data.error || 'خطا در بارگذاری محصولات');
+                }
+            } catch (error) {
+                console.error('Error loading products:', error);
+                showError('خطا در ارتباط با سرور');
+            }
+        }
+        
+        // رندر آزمون
+        function renderExam() {
+            const productsGrid = document.getElementById('productsGrid');
+            const productNamesGrid = document.getElementById('productNamesGrid');
+            
+            // پاک کردن محتوای قبلی
+            productsGrid.innerHTML = '';
+            productNamesGrid.innerHTML = '';
+            
+            // رندر تصاویر محصولات
+            products.forEach((product, index) => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-image-card';
+                productCard.dataset.productCode = product.ProductCode;
+                
+                productCard.innerHTML = `
+                    ${product.ImageFile && product.ImageFile !== 'null.jpg' ? 
+                        `<img src="/static/images/${product.ImageFile}" class="product-image" alt="محصول">` :
+                        `<div class="product-placeholder"><i class="fas fa-image fa-2x"></i></div>`
+                    }
+                    <div class="product-id">کد: ${product.ProductCode}</div>
+                    <div class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" data-product-code="${product.ProductCode}">
+                        اینجا رها کنید
+                    </div>
+                `;
+                
+                productsGrid.appendChild(productCard);
+            });
+            
+            // رندر نام‌های محصولات (ترتیب تصادفی)
+            const shuffledProducts = [...products].sort(() => Math.random() - 0.5);
+            shuffledProducts.forEach(product => {
+                const nameItem = document.createElement('div');
+                nameItem.className = 'product-name-item';
+                nameItem.draggable = true;
+                nameItem.dataset.productCode = product.ProductCode;
+                nameItem.ondragstart = dragStart;
+                
+                nameItem.innerHTML = `
+                    <div class="product-name">${product.ProductName}</div>
+                    <div class="product-category">${product.Category || 'عمومی'}</div>
+                `;
+                
+                productNamesGrid.appendChild(nameItem);
+            });
+            
+            // آپدیت آمار
+            document.getElementById('totalCount').textContent = products.length;
+            
+            // نمایش محتوای اصلی
+            document.getElementById('loadingArea').style.display = 'none';
+            document.getElementById('examMainContent').style.display = 'block';
+        }
+        
+        // شروع تایمر
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const now = new Date();
+                const elapsed = Math.floor((now - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('timer').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        // Drag and Drop functions
+        function dragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.productCode);
+            e.target.classList.add('dragging');
+        }
+        
+        function allowDrop(e) {
+            e.preventDefault();
+            e.target.classList.add('drag-over');
+        }
+        
+        function drop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+            
+            const productCode = e.dataTransfer.getData('text/plain');
+            const targetCode = e.target.dataset.productCode;
+            
+            // بررسی اینکه drop zone خالی باشد
+            if (e.target.classList.contains('filled')) {
+                return;
+            }
+            
+            // ایجاد تطبیق
+            matches[targetCode] = productCode;
+            
+            // آپدیت UI
+            const draggedElement = document.querySelector(`[data-product-code="${productCode}"].product-name-item`);
+            draggedElement.classList.add('used');
+            draggedElement.classList.remove('dragging');
+            
+            e.target.classList.add('filled');
+            e.target.innerHTML = `
+                <div class="dropped-item">
+                    <button class="remove-match" onclick="removeMatch('${targetCode}')">&times;</button>
+                    ${draggedElement.querySelector('.product-name').textContent}
+                </div>
+            `;
+            
+            updateProgress();
+        }
+        
+        // حذف تطبیق
+        function removeMatch(targetCode) {
+            const matchedCode = matches[targetCode];
+            delete matches[targetCode];
+            
+            // آپدیت UI
+            const draggedElement = document.querySelector(`[data-product-code="${matchedCode}"].product-name-item`);
+            draggedElement.classList.remove('used');
+            
+            const dropZone = document.querySelector(`[data-product-code="${targetCode}"].drop-zone`);
+            dropZone.classList.remove('filled');
+            dropZone.innerHTML = 'اینجا رها کنید';
+            
+            updateProgress();
+        }
+        
+        // آپدیت پیشرفت
+        function updateProgress() {
+            const completed = Object.keys(matches).length;
+            const total = products.length;
+            
+            document.getElementById('completedCount').textContent = completed;
+            
+            const status = document.getElementById('completionStatus');
+            const submitBtn = document.getElementById('submitExamBtn');
+            
+            if (completed === 0) {
+                document.getElementById('completionText').textContent = 'هنوز شروع نشده';
+                status.className = 'completion-status';
+            } else if (completed === total) {
+                document.getElementById('completionText').textContent = 'تکمیل شده - آماده تایید';
+                status.className = 'completion-status complete';
+                submitBtn.disabled = false;
+            } else {
+                document.getElementById('completionText').textContent = `${completed} از ${total} تطبیق انجام شده`;
+                status.className = 'completion-status';
+                submitBtn.disabled = true;
+            }
+        }
+        
+        // تایید آزمون
+        async function submitExam() {
+            if (Object.keys(matches).length !== products.length) {
+                alert('لطفاً ابتدا همه تطبیق‌ها را کامل کنید');
+                return;
+            }
+            
+            if (!confirm('آیا مطمئن هستید که می‌خواهید آزمون را تایید کنید؟')) {
+                return;
+            }
+            
+            clearInterval(timerInterval);
+            
+            try {
+                const response = await fetch('/submit_product_exam', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        exam_code: examData.examCode,
+                        matches: matches,
+                        time_taken: Math.floor((new Date() - startTime) / 1000)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showResults(result);
+                } else {
+                    alert('خطا در ثبت نتیجه: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error submitting exam:', error);
+                alert('خطا در ارتباط با سرور');
+            }
+        }
+        
+        // نمایش نتایج
+        function showResults(result) {
+            document.getElementById('totalQuestions').textContent = result.total_questions;
+            document.getElementById('correctAnswers').textContent = result.correct_answers;
+            document.getElementById('wrongAnswers').textContent = result.wrong_answers;
+            document.getElementById('finalScore').textContent = result.score;
+            document.getElementById('scorePercentage').textContent = result.percentage + '%';
+            
+            const scoreCircle = document.getElementById('scoreCircle');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMessage = document.getElementById('resultMessage');
+            
+            if (result.percentage >= 80) {
+                scoreCircle.className = 'score-circle score-excellent';
+                resultTitle.textContent = 'عالی!';
+                resultMessage.textContent = 'شما عملکرد بسیار خوبی داشتید';
+            } else if (result.percentage >= 60) {
+                scoreCircle.className = 'score-circle score-good';
+                resultTitle.textContent = 'خوب';
+                resultMessage.textContent = 'عملکرد قابل قبولی داشتید';
+            } else {
+                scoreCircle.className = 'score-circle score-poor';
+                resultTitle.textContent = 'نیاز به تلاش بیشتر';
+                resultMessage.textContent = 'لطفاً بیشتر مطالعه کنید';
+            }
+            
+            document.getElementById('resultsModal').style.display = 'flex';
+        }
+        
+        // بازگشت به لیست آزمون‌ها
+        function goBackToExamList() {
+            window.location.href = '/user_exam_list';
+        }
+        
+        // نمایش خطا
+        function showError(message) {
+            document.getElementById('loadingArea').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${message}
+                </div>
+                <button class="btn btn-primary" onclick="window.location.href='/user_exam_list'">
+                    بازگشت به لیست آزمون‌ها
+                </button>
+            `;
+        }
+        
+        // جلوگیری از drag روی عناصر used
+        document.addEventListener('dragstart', function(e) {
+            if (e.target.classList.contains('used')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>

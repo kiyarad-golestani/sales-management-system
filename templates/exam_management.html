@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت آزمون</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            padding: 30px;
+            max-width: 1000px;
+        }
+        
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #6f42c1, #5a32a3);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(111, 66, 193, 0.3);
+        }
+        
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .back-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: linear-gradient(45deg, #7f8c8d, #95a5a6);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+        
+        .exam-form {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px solid #6f42c1;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 1rem;
+        }
+        
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #6f42c1;
+            box-shadow: 0 0 15px rgba(111, 66, 193, 0.2);
+            outline: none;
+        }
+        
+        .brand-select, .exam-type-select {
+            background: white;
+            cursor: pointer;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(45deg, #6f42c1, #5a32a3);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .submit-btn:hover {
+            background: linear-gradient(45deg, #5a32a3, #6f42c1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(111, 66, 193, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .exam-list {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .exam-list-header {
+            background: linear-gradient(45deg, #6f42c1, #5a32a3);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .exam-list-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .exam-item {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+        
+        .exam-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .exam-item:last-child {
+            border-bottom: none;
+        }
+        
+        .exam-info {
+            flex: 1;
+        }
+        
+        .exam-code {
+            font-weight: bold;
+            color: #6f42c1;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+        
+        .exam-name {
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        
+        .exam-brand {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .exam-type {
+            font-size: 0.85rem;
+            color: #28a745;
+            font-weight: 500;
+            background: #d4edda;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        
+        .exam-date {
+            color: #999;
+            font-size: 0.85rem;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6f42c1;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #6f42c1;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .exam-type-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 5px;
+            display: inline-block;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .page-header h1 {
+                font-size: 2rem;
+            }
+            
+            .exam-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .exam-date {
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <a href="{{ url_for('index') }}" class="back-btn">
+            <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
+        </a>
+        
+        <div class="page-header">
+            <h1><i class="fas fa-clipboard-check"></i> مدیریت آزمون</h1>
+            <p>ایجاد و مدیریت آزمون‌های برندی</p>
+        </div>
+        
+        <!-- پیام‌های سیستم -->
+        <div id="messageArea"></div>
+        
+        <!-- فرم ایجاد آزمون جدید -->
+        <div class="exam-form">
+            <h3 class="mb-4"><i class="fas fa-plus-circle"></i> ایجاد آزمون جدید</h3>
+            
+            <form id="examForm" onsubmit="createExam(event)">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-file-alt"></i> نام آزمون
+                            </label>
+                            <input type="text" class="form-control" id="examName" 
+                                   placeholder="مثال: آزمون محصولات ماه آبان" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-list-ul"></i> نوع آزمون
+                            </label>
+                            <select class="form-control exam-type-select" id="examType" required>
+                                <option value="">انتخاب کنید...</option>
+                                <option value="محصولات">آزمون محصولات</option>
+                                <option value="برند">آزمون برندی</option>
+                                <option value="عمومی">آزمون عمومی</option>
+                                <option value="تخصصی">آزمون تخصصی</option>
+                                <option value="فروش">آزمون فروش</option>
+                                <option value="مهارت">آزمون مهارت</option>
+                                <option value="دانش">آزمون دانش</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-tag"></i> انتخاب برند
+                            </label>
+                            <select class="form-control brand-select" id="brandSelect" required>
+                                <option value="">انتخاب کنید...</option>
+                                <!-- برندها اینجا بارگذاری می‌شوند -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-comment"></i> توضیحات (اختیاری)
+                            </label>
+                            <input type="text" class="form-control" id="examDescription" 
+                                   placeholder="توضیحات کوتاه درباره آزمون">
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <i class="fas fa-save"></i> ایجاد آزمون
+                </button>
+            </form>
+        </div>
+        
+        <!-- لیست آزمون‌های موجود -->
+        <div class="exam-list">
+            <div class="exam-list-header">
+                <h3><i class="fas fa-list"></i> آزمون‌های ایجاد شده</h3>
+            </div>
+            
+            <div id="examListContent">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>در حال بارگذاری...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // بارگذاری اولیه
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBrands();
+            loadExamList();
+        });
+        
+        // بارگذاری لیست برندها
+        async function loadBrands() {
+            try {
+                const response = await fetch('/get_brands_for_exam');
+                const data = await response.json();
+                
+                const brandSelect = document.getElementById('brandSelect');
+                brandSelect.innerHTML = '<option value="">انتخاب کنید...</option>';
+                
+                if (data.brands && data.brands.length > 0) {
+                    data.brands.forEach(brand => {
+                        const option = document.createElement('option');
+                        option.value = brand;
+                        option.textContent = brand;
+                        brandSelect.appendChild(option);
+                    });
+                } else {
+                    brandSelect.innerHTML = '<option value="">هیچ برندی یافت نشد</option>';
+                }
+            } catch (error) {
+                console.error('Error loading brands:', error);
+                showMessage('خطا در بارگذاری برندها', 'error');
+            }
+        }
+        
+        // بارگذاری لیست آزمون‌ها
+        async function loadExamList() {
+            try {
+                const response = await fetch('/get_exam_list');
+                const data = await response.json();
+                
+                const examListContent = document.getElementById('examListContent');
+                
+                if (data.exams && data.exams.length > 0) {
+                    let html = '';
+                    data.exams.forEach(exam => {
+                        // تعیین رنگ badge بر اساس نوع آزمون
+                        let badgeClass = 'exam-type-badge';
+                        switch(exam.exam_type) {
+                            case 'محصولات': badgeClass += ' bg-primary'; break;
+                            case 'برند': badgeClass += ' bg-success'; break;
+                            case 'عمومی': badgeClass += ' bg-info'; break;
+                            case 'تخصصی': badgeClass += ' bg-warning'; break;
+                            case 'فروش': badgeClass += ' bg-danger'; break;
+                            case 'مهارت': badgeClass += ' bg-secondary'; break;
+                            case 'دانش': badgeClass += ' bg-dark'; break;
+                            default: badgeClass += ' bg-light text-dark';
+                        }
+                        
+                        html += `
+                            <div class="exam-item">
+                                <div class="exam-info">
+                                    <div class="exam-code">${exam.exam_code}</div>
+                                    <div class="exam-name">${exam.exam_name}</div>
+                                    <div class="exam-brand"><i class="fas fa-tag"></i> ${exam.brand_name}</div>
+                                    <div class="${badgeClass}">${exam.exam_type || 'عمومی'}</div>
+                                    ${exam.description ? `<div class="exam-description text-muted mt-2"><i class="fas fa-comment"></i> ${exam.description}</div>` : ''}
+                                </div>
+                                <div class="exam-date">${exam.created_date}</div>
+                            </div>
+                        `;
+                    });
+                    examListContent.innerHTML = html;
+                } else {
+                    examListContent.innerHTML = `
+                        <div class="text-center p-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">هنوز آزمونی ایجاد نشده است</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading exam list:', error);
+                examListContent.innerHTML = `
+                    <div class="text-center p-4">
+                        <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+                        <p class="text-danger">خطا در بارگذاری لیست آزمون‌ها</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // ایجاد آزمون جدید
+        async function createExam(event) {
+            event.preventDefault();
+            
+            const examName = document.getElementById('examName').value.trim();
+            const examType = document.getElementById('examType').value;
+            const brandName = document.getElementById('brandSelect').value;
+            const examDescription = document.getElementById('examDescription').value.trim();
+            const submitBtn = document.getElementById('submitBtn');
+            
+            if (!examName || !examType || !brandName) {
+                showMessage('لطفاً همه فیلدهای اجباری را تکمیل کنید', 'error');
+                return;
+            }
+            
+            // تغییر وضعیت دکمه
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<div class="loading-spinner"></div> در حال ایجاد...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/create_exam', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        exam_name: examName,
+                        exam_type: examType,
+                        brand_name: brandName,
+                        description: examDescription
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage(`آزمون با موفقیت ایجاد شد! کد آزمون: ${result.exam_code}`, 'success');
+                    
+                    // پاک کردن فرم
+                    document.getElementById('examForm').reset();
+                    
+                    // بارگذاری مجدد لیست
+                    loadExamList();
+                } else {
+                    showMessage('خطا در ایجاد آزمون: ' + result.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error creating exam:', error);
+                showMessage('خطا در ارتباط با سرور', 'error');
+            } finally {
+                // بازگرداندن وضعیت دکمه
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        }
+        
+        // نمایش پیام
+        function showMessage(message, type) {
+            const messageArea = document.getElementById('messageArea');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+            
+            messageArea.innerHTML = `
+                <div class="alert ${alertClass}">
+                    <i class="fas ${icon}"></i> ${message}
+                </div>
+            `;
+            
+            // حذف پیام بعد از 5 ثانیه
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

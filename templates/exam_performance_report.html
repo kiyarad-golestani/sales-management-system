@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش عملکرد آزمون بازاریابان</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Tahoma', sans-serif;
+            background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            padding: 30px;
+            max-width: 1400px;
+        }
+        
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(45deg, #8B5CF6, #A855F7);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }
+        
+        .page-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .back-btn {
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: linear-gradient(45deg, #7f8c8d, #95a5a6);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+        
+        .filter-section {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px solid #8B5CF6;
+        }
+        
+        .filter-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-label {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #8B5CF6;
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+            outline: none;
+        }
+        
+        .generate-btn {
+            background: linear-gradient(45deg, #8B5CF6, #A855F7);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .generate-btn:hover {
+            background: linear-gradient(45deg, #A855F7, #8B5CF6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 3px solid;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--card-color), var(--card-color-dark));
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .summary-card.participants {
+            --card-color: #3498db;
+            --card-color-dark: #2980b9;
+            border-color: #3498db;
+        }
+        
+        .summary-card.total-exams {
+            --card-color: #9b59b6;
+            --card-color-dark: #8e44ad;
+            border-color: #9b59b6;
+        }
+        
+        .summary-card.avg-score {
+            --card-color: #27ae60;
+            --card-color-dark: #229954;
+            border-color: #27ae60;
+        }
+        
+        .summary-card.pass-rate {
+            --card-color: #f39c12;
+            --card-color-dark: #e67e22;
+            border-color: #f39c12;
+        }
+        
+        .summary-card-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, var(--card-color), var(--card-color-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .summary-card-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .summary-card-label {
+            color: #666;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 2px solid #e9ecef;
+        }
+        
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .performance-table {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+        
+        .table-header {
+            background: linear-gradient(45deg, #8B5CF6, #A855F7);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .table-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .performance-table table {
+            width: 100%;
+            margin: 0;
+        }
+        
+        .performance-table th {
+            background: #f8f9fa;
+            color: #333;
+            font-weight: bold;
+            padding: 15px;
+            text-align: center;
+            border: none;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .performance-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: middle;
+        }
+        
+        .performance-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        
+        .rank-1 { 
+            background: linear-gradient(45deg, #ffd700, #ffed4e); 
+            color: #333; 
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+        }
+        .rank-2 { 
+            background: linear-gradient(45deg, #c0c0c0, #e8e8e8); 
+            color: #333;
+            box-shadow: 0 4px 15px rgba(192, 192, 192, 0.4);
+        }
+        .rank-3 { 
+            background: linear-gradient(45deg, #cd7f32, #ff8c42);
+            box-shadow: 0 4px 15px rgba(205, 127, 50, 0.4);
+        }
+        .rank-other { 
+            background: linear-gradient(45deg, #95a5a6, #7f8c8d);
+        }
+        
+        .salesperson-info {
+            text-align: right;
+        }
+        
+        .salesperson-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 1rem;
+        }
+        
+        .salesperson-code {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        .metric-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .score-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+            min-width: 60px;
+        }
+        
+        .score-excellent { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+        .score-good { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .score-poor { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        
+        .pass-rate-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        
+        .pass-excellent { background: linear-gradient(45deg, #27ae60, #2ecc71); }
+        .pass-good { background: linear-gradient(45deg, #f39c12, #e67e22); }
+        .pass-poor { background: linear-gradient(45deg, #e74c3c, #c0392b); }
+        
+        .details-btn {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .details-btn:hover {
+            background: linear-gradient(45deg, #2980b9, #3498db);
+            transform: scale(1.05);
+        }
+        
+        .exam-details-modal .modal-content {
+            border-radius: 15px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .exam-details-modal .modal-header {
+            background: linear-gradient(45deg, #8B5CF6, #A855F7);
+            color: white;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
+            border-bottom: none;
+        }
+        
+        .exam-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .exam-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .exam-item:hover {
+            background: #e9ecef;
+            transform: translateX(-5px);
+        }
+        
+        .exam-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .exam-code {
+            font-weight: bold;
+            color: #8B5CF6;
+        }
+        
+        .exam-date {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .exam-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #8B5CF6;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #8B5CF6;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 2px solid #bee5eb;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .export-btn {
+            background: linear-gradient(45deg, #17a2b8, #138496);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(45deg, #138496, #17a2b8);
+            color: white;
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .filter-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-cards {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+            
+            .exam-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <a href="{{ url_for('index') }}" class="back-btn">
+            <i class="fas fa-arrow-right"></i> بازگشت به داشبورد
+        </a>
+        
+        <div class="page-header">
+            <h1><i class="fas fa-clipboard-check"></i> گزارش عملکرد آزمون بازاریابان</h1>
+            <p>تحلیل و ارزیابی نتایج آزمون‌های بازاریابان</p>
+        </div>
+        
+        <!-- بخش فیلتر و تنظیمات -->
+        <div class="filter-section">
+            <h4 class="mb-4"><i class="fas fa-filter"></i> تنظیمات گزارش</h4>
+            
+            <div class="filter-inputs">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-calendar-alt"></i> از تاریخ (شمسی)
+                    </label>
+                    <input type="text" class="form-control" id="dateFrom" 
+                           placeholder="1403/01/01" maxlength="10">
+                    <small class="text-muted">اختیاری - برای تمام دوره‌ها خالی بگذارید</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-calendar-alt"></i> تا تاریخ (شمسی)
+                    </label>
+                    <input type="text" class="form-control" id="dateTo" 
+                           placeholder="1403/12/29" maxlength="10">
+                    <small class="text-muted">اختیاری - برای تمام دوره‌ها خالی بگذارید</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-list"></i> نوع آزمون
+                    </label>
+                    <select class="form-control" id="examTypeFilter">
+                        <option value="all">همه انواع آزمون</option>
+                        <!-- انواع آزمون اینجا بارگذاری می‌شوند -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-tag"></i> برند
+                    </label>
+                    <select class="form-control" id="brandFilter">
+                        <option value="all">همه برندها</option>
+                        <!-- برندها اینجا بارگذاری می‌شوند -->
+                    </select>
+                </div>
+            </div>
+            
+            <button class="generate-btn" onclick="generateReport()">
+                <i class="fas fa-chart-line"></i>
+                تولید گزارش عملکرد
+            </button>
+        </div>
+        
+        <!-- بخش پیام‌ها -->
+        <div id="messageArea"></div>
+        
+        <!-- بخش آمار کلی -->
+        <div id="summarySection" style="display: none;">
+            <div class="summary-cards">
+                <div class="summary-card participants">
+                    <div class="summary-card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="summary-card-number" id="totalParticipants">0</div>
+                    <div class="summary-card-label">شرکت‌کننده</div>
+                </div>
+                
+                <div class="summary-card total-exams">
+                    <div class="summary-card-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="summary-card-number" id="totalExams">0</div>
+                    <div class="summary-card-label">کل آزمون‌ها</div>
+                </div>
+                
+                <div class="summary-card avg-score">
+                    <div class="summary-card-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="summary-card-number" id="averageScore">0</div>
+                    <div class="summary-card-label">میانگین نمره</div>
+                </div>
+                
+                <div class="summary-card pass-rate">
+                    <div class="summary-card-icon">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="summary-card-number" id="passRate">0%</div>
+                    <div class="summary-card-label">نرخ قبولی</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- بخش نمودارها -->
+        <div id="chartsSection" style="display: none;">
+            <div class="charts-section">
+                <div class="chart-container">
+                    <div class="chart-title">رنکینگ میانگین نمرات</div>
+                    <canvas id="scoresChart" width="400" height="300"></canvas>
+                </div>
+                
+                <div class="chart-container">
+                    <div class="chart-title">توزیع نمرات بازاریابان</div>
+                    <canvas id="distributionChart" width="400" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- جدول عملکرد تفصیلی -->
+        <div id="performanceTableSection" style="display: none;">
+            <div class="performance-table">
+                <div class="table-header">
+                    <h3><i class="fas fa-trophy"></i> جدول عملکرد آزمون بازاریابان</h3>
+                    <p class="mb-0">رنکینگ و آمار تفصیلی نتایج آزمون</p>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>رنک</th>
+                                <th>بازاریاب</th>
+                                <th>تعداد آزمون</th>
+                                <th>میانگین نمره</th>
+                                <th>آزمون‌های قبولی</th>
+                                <th>نرخ قبولی</th>
+                                <th>توزیع نمرات</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="performanceTableBody">
+                            <!-- داده‌ها اینجا بارگذاری می‌شوند -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- دکمه‌های خروجی -->
+        <div id="exportSection" style="display: none;">
+            <div class="export-buttons">
+                <a href="#" class="export-btn" onclick="exportToExcel()">
+                    <i class="fas fa-file-excel"></i>
+                    خروجی Excel
+                </a>
+                <a href="#" class="export-btn" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf"></i>
+                    خروجی PDF
+                </a>
+                <a href="#" class="export-btn" onclick="printReport()">
+                    <i class="fas fa-print"></i>
+                    چاپ گزارش
+                </a>
+            </div>
+        </div>
+        
+        <!-- بخش لودینگ -->
+        <div id="loadingSection" style="display: none;">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>در حال تولید گزارش...</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal جزئیات آزمون‌های بازاریاب -->
+    <div class="modal fade exam-details-modal" id="examDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-clipboard-check"></i>
+                        جزئیات آزمون‌های <span id="modalSalespersonName"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="examHistoryContent" class="exam-history">
+                        <!-- تاریخچه آزمون‌ها اینجا بارگذاری می‌شود -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let reportData = null;
+        let scoresChart = null;
+        let distributionChart = null;
+        
+        // بارگذاری اولیه
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFilters();
+        });
+        
+        // بارگذاری فیلترها
+        async function loadFilters() {
+            try {
+                const response = await fetch('/get_exam_filters');
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error loading filters:', data.error);
+                    return;
+                }
+                
+                // پر کردن نوع آزمون
+                const examTypeSelect = document.getElementById('examTypeFilter');
+                examTypeSelect.innerHTML = '<option value="all">همه انواع آزمون</option>';
+                data.exam_types.forEach(type => {
+                    const option = document.createElement('option');
+                    option.value = type;
+                    option.textContent = type;
+                    examTypeSelect.appendChild(option);
+                });
+                
+                // پر کردن برندها
+                const brandSelect = document.getElementById('brandFilter');
+                brandSelect.innerHTML = '<option value="all">همه برندها</option>';
+                data.brands.forEach(brand => {
+                    const option = document.createElement('option');
+                    option.value = brand;
+                    option.textContent = brand;
+                    brandSelect.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading filters:', error);
+            }
+        }
+        
+        // تولید گزارش
+        async function generateReport() {
+            const dateFrom = document.getElementById('dateFrom').value.trim();
+            const dateTo = document.getElementById('dateTo').value.trim();
+            const examType = document.getElementById('examTypeFilter').value;
+            const brand = document.getElementById('brandFilter').value;
+            
+            // بررسی فرمت تاریخ در صورت وارد کردن
+            if (dateFrom && !isValidPersianDate(dateFrom)) {
+                showMessage('فرمت تاریخ شروع باید به صورت 1403/01/01 باشد', 'error');
+                return;
+            }
+            
+            if (dateTo && !isValidPersianDate(dateTo)) {
+                showMessage('فرمت تاریخ پایان باید به صورت 1403/01/01 باشد', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            hideAllSections();
+            
+            try {
+                const response = await fetch('/get_exam_performance_report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date_from: dateFrom,
+                        date_to: dateTo,
+                        exam_type: examType,
+                        brand: brand
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage('خطا: ' + data.error, 'error');
+                    return;
+                }
+                
+                reportData = data;
+                displayReport(data);
+                
+                const period = data.period_info || 'تمام دوره‌ها';
+                showMessage(`گزارش عملکرد آزمون برای ${period} تولید شد`, 'success');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('خطا در ارتباط با سرور', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // نمایش گزارش
+        function displayReport(data) {
+            if (data.salespeople.length === 0) {
+                showMessage(data.message || 'هیچ داده‌ای یافت نشد', 'info');
+                return;
+            }
+            
+            showAllSections();
+            updateSummaryStats(data.summary);
+            updatePerformanceTable(data.salespeople);
+            updateCharts(data.salespeople);
+        }
+        
+        // آپدیت آمار کلی
+        function updateSummaryStats(summary) {
+            document.getElementById('totalParticipants').textContent = summary.total_participants.toLocaleString();
+            document.getElementById('totalExams').textContent = summary.total_exams.toLocaleString();
+            document.getElementById('averageScore').textContent = summary.average_score.toLocaleString();
+            document.getElementById('passRate').textContent = summary.pass_rate + '%';
+        }
+        
+        // آپدیت جدول عملکرد
+        function updatePerformanceTable(salespeople) {
+            const tbody = document.getElementById('performanceTableBody');
+            tbody.innerHTML = '';
+            
+            salespeople.forEach((sp, index) => {
+                const rank = index + 1;
+                const rankClass = getRankClass(rank);
+                const scoreClass = getScoreClass(sp.average_score);
+                const passRateClass = getPassRateClass(sp.pass_rate);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="rank-badge ${rankClass}">${rank}</div>
+                    </td>
+                    <td>
+                        <div class="salesperson-info">
+                            <div class="salesperson-name">${sp.salesperson_name}</div>
+                            <div class="salesperson-code">${sp.salesperson_code}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="metric-value">${sp.total_exams}</div>
+                    </td>
+                    <td>
+                        <div class="score-badge ${scoreClass}">
+                            ${sp.average_score}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="metric-value">
+                            ${sp.passed_exams} از ${sp.total_exams}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="pass-rate-badge ${passRateClass}">
+                            ${sp.pass_rate}%
+                        </div>
+                    </td>
+                    <td>
+                        <small>
+                            <span class="badge bg-success me-1">${sp.excellent_scores}</span>
+                            <span class="badge bg-warning me-1">${sp.good_scores}</span>
+                            <span class="badge bg-danger">${sp.poor_scores}</span>
+                        </small>
+                    </td>
+                    <td>
+                        <button class="details-btn" onclick="showExamDetails('${sp.salesperson_code}', '${sp.salesperson_name}')">
+                            <i class="fas fa-eye"></i> جزئیات
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // آپدیت نمودارها
+        function updateCharts(salespeople) {
+            updateScoresChart(salespeople);
+            updateDistributionChart(salespeople);
+        }
+        
+        // نمودار نمرات
+        function updateScoresChart(salespeople) {
+            const ctx = document.getElementById('scoresChart').getContext('2d');
+            
+            if (scoresChart) {
+                scoresChart.destroy();
+            }
+            
+            const top10 = salespeople.slice(0, 10);
+            
+            scoresChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: top10.map(sp => sp.salesperson_name),
+                    datasets: [{
+                        label: 'میانگین نمره',
+                        data: top10.map(sp => sp.average_score),
+                        backgroundColor: [
+                            '#8B5CF6', '#A855F7', '#C084FC', '#D8B4FE',
+                            '#E9D5FF', '#6366F1', '#8B5CF6', '#A855F7',
+                            '#C084FC', '#D8B4FE'
+                        ],
+                        borderWidth: 0,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                callback: function(value) {
+                                    return value + ' امتیاز';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // نمودار توزیع نمرات
+        function updateDistributionChart(salespeople) {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            
+            if (distributionChart) {
+                distributionChart.destroy();
+            }
+            
+            // محاسبه توزیع نمرات
+            let excellentCount = 0;
+            let goodCount = 0;
+            let poorCount = 0;
+            
+            salespeople.forEach(sp => {
+                excellentCount += sp.excellent_scores;
+                goodCount += sp.good_scores;
+                poorCount += sp.poor_scores;
+            });
+            
+            distributionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['عالی (80-100)', 'خوب (60-80)', 'ضعیف (زیر 60)'],
+                    datasets: [{
+                        data: [excellentCount, goodCount, poorCount],
+                        backgroundColor: ['#27ae60', '#f39c12', '#e74c3c'],
+                        borderWidth: 3,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // نمایش جزئیات آزمون‌های بازاریاب
+        function showExamDetails(salespersonCode, salespersonName) {
+            const salesperson = reportData.salespeople.find(sp => sp.salesperson_code === salespersonCode);
+            
+            if (!salesperson) return;
+            
+            document.getElementById('modalSalespersonName').textContent = salespersonName;
+            
+            const historyContent = document.getElementById('examHistoryContent');
+            historyContent.innerHTML = '';
+            
+            if (salesperson.exam_details.length === 0) {
+                historyContent.innerHTML = '<p class="text-center text-muted">هیچ آزمونی یافت نشد</p>';
+            } else {
+                salesperson.exam_details.forEach(exam => {
+                    const scoreClass = getScoreClass(exam.percentage);
+                    
+                    const examItem = document.createElement('div');
+                    examItem.className = 'exam-item';
+                    examItem.innerHTML = `
+                        <div class="exam-header">
+                            <div class="exam-code">${exam.exam_code}</div>
+                            <div class="exam-date">${exam.exam_date}</div>
+                        </div>
+                        <div class="exam-info">
+                            <div><strong>نوع:</strong> ${exam.exam_type}</div>
+                            <div><strong>برند:</strong> ${exam.brand_name}</div>
+                            <div><strong>نمره:</strong> <span class="score-badge ${scoreClass}">${exam.score}</span></div>
+                            <div><strong>درصد:</strong> ${exam.percentage}%</div>
+                            <div><strong>صحیح:</strong> ${exam.correct_answers}/${exam.total_questions}</div>
+                            <div><strong>زمان:</strong> ${exam.time_taken}</div>
+                        </div>
+                    `;
+                    historyContent.appendChild(examItem);
+                });
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('examDetailsModal'));
+            modal.show();
+        }
+        
+        // توابع کمکی
+        function getRankClass(rank) {
+            if (rank === 1) return 'rank-1';
+            if (rank === 2) return 'rank-2';
+            if (rank === 3) return 'rank-3';
+            return 'rank-other';
+        }
+        
+        function getScoreClass(score) {
+            if (score >= 80) return 'score-excellent';
+            if (score >= 60) return 'score-good';
+            return 'score-poor';
+        }
+        
+        function getPassRateClass(rate) {
+            if (rate >= 80) return 'pass-excellent';
+            if (rate >= 60) return 'pass-good';
+            return 'pass-poor';
+        }
+        
+        function isValidPersianDate(date) {
+            const pattern = /^\d{4}\/\d{2}\/\d{2}$/;
+            return pattern.test(date);
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loadingSection').style.display = show ? 'block' : 'none';
+        }
+        
+        function hideAllSections() {
+            document.getElementById('summarySection').style.display = 'none';
+            document.getElementById('chartsSection').style.display = 'none';
+            document.getElementById('performanceTableSection').style.display = 'none';
+            document.getElementById('exportSection').style.display = 'none';
+        }
+        
+        function showAllSections() {
+            document.getElementById('summarySection').style.display = 'block';
+            document.getElementById('chartsSection').style.display = 'block';
+            document.getElementById('performanceTableSection').style.display = 'block';
+            document.getElementById('exportSection').style.display = 'block';
+        }
+        
+        function showMessage(message, type) {
+            const messageArea = document.getElementById('messageArea');
+            const alertClass = type === 'success' ? 'alert-success' : 
+                             type === 'info' ? 'alert-info' : 'alert-error';
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                        type === 'info' ? 'fa-info-circle' : 'fa-exclamation-circle';
+            
+            messageArea.innerHTML = `
+                <div class="alert ${alertClass}">
+                    <i class="fas ${icon}"></i> ${message}
+                </div>
+            `;
+            
+            setTimeout(() => {
+                messageArea.innerHTML = '';
+            }, 5000);
+        }
+        
+        // توابع خروجی
+        function exportToExcel() {
+            showMessage('قابلیت خروجی Excel به زودی اضافه خواهد شد', 'info');
+        }
+        
+        function exportToPDF() {
+            showMessage('قابلیت خروجی PDF به زودی اضافه خواهد شد', 'info');
+        }
+        
+        function printReport() {
+            window.print();
+        }
+    </script>
+</body>
+</html>
