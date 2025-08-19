@@ -4091,18 +4091,13 @@ def api_location_city(city_name):
 # ===============================
 
 if __name__ == '__main__':
-    #print("🚀 Starting enhanced Flask application...")
-    #print("📂 Files:")
-    #print(f"   Users: {USERS_FILE}")
-    #print(f"   Customers: {CUSTOMERS_FILE}")
-    #print(f"   Visits: {VISITS_FILE}")
-    #print("🌐 URL: http://127.0.0.1:5000")
-    #print("👤 Test users:")
-    #print("   Admin: ahmad / 123456")
-    #print("   User:  maryam / 789012")
-    #print("-" * 50)
     import os
+    
+    # برای production deployment
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
+
    
     #app.run(debug=True)
