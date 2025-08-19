@@ -3,6 +3,8 @@ import pandas as pd
 import os
 from datetime import datetime
 import jdatetime
+import requests
+import json
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-2024'
@@ -3972,6 +3974,118 @@ def get_exam_filters():
         print(f"❌ Error in get_exam_filters: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+# اضافه کردن این تابع به app.py
+def get_location_by_ip(ip_address=None):
+    """دریافت مکان بر اساس IP"""
+    try:
+        # سرویس‌های مختلف برای IP Location
+        services = [
+            f"https://ipapi.co/{ip_address}/json/" if ip_address else "https://ipapi.co/json/",
+            "http://ip-api.com/json/",
+            "https://ipinfo.io/json"
+        ]
+        
+        for service_url in services:
+            try:
+                response = requests.get(service_url, timeout=5)
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # استخراج coordinates از response های مختلف
+                    lat, lon = None, None
+                    
+                    if 'latitude' in data and 'longitude' in data:
+                        lat, lon = data['latitude'], data['longitude']
+                    elif 'lat' in data and 'lon' in data:
+                        lat, lon = data['lat'], data['lon']
+                    elif 'loc' in data:  # ipinfo.io format
+                        lat, lon = data['loc'].split(',')
+                        lat, lon = float(lat), float(lon)
+                    
+                    if lat and lon:
+                        return {
+                            'latitude': float(lat),
+                            'longitude': float(lon),
+                            'city': data.get('city', 'نامشخص'),
+                            'country': data.get('country_name', data.get('country', 'نامشخص')),
+                            'accuracy': 'city_level',
+                            'source': service_url
+                        }
+            except:
+                continue
+        
+        return None
+    except Exception as e:
+        print(f"Error in IP location: {e}")
+        return None
+
+# اضافه کردن این route به app.py
+@app.route('/api/location/ip')
+def api_location_ip():
+    """API endpoint برای دریافت مکان بر اساس IP"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    # دریافت IP کاربر
+    user_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+    if user_ip == '127.0.0.1':
+        user_ip = None  # برای localhost از خودکار استفاده کن
+    
+    location_data = get_location_by_ip(user_ip)
+    
+    if location_data:
+        return jsonify({
+            'success': True,
+            'location': location_data
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': 'نتوانستیم مکان شما را تشخیص دهیم'
+        }), 404
+
+# محل‌های پیش‌فرض برای شهرهای بزرگ ایران
+DEFAULT_LOCATIONS = {
+    'تهران': {'lat': 35.6892, 'lon': 51.3890},
+    'اصفهان': {'lat': 32.6546, 'lon': 51.6680},
+    'شیراز': {'lat': 29.5918, 'lon': 52.5837},
+    'مشهد': {'lat': 36.2605, 'lon': 59.6168},
+    'تبریز': {'lat': 38.0962, 'lon': 46.2738},
+    'کرج': {'lat': 35.8327, 'lon': 50.9916},
+    'اهواز': {'lat': 31.3183, 'lon': 48.6706},
+    'رشت': {'lat': 37.4482, 'lon': 49.1267},
+    'قم': {'lat': 34.6401, 'lon': 50.8764},
+    'ساری': {'lat': 36.5659, 'lon': 53.0586}
+}
+
+# اضافه کردن این route به app.py
+@app.route('/api/location/city/<city_name>')
+def api_location_city(city_name):
+    """API برای دریافت مختصات شهر"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    city_location = DEFAULT_LOCATIONS.get(city_name)
+    
+    if city_location:
+        return jsonify({
+            'success': True,
+            'location': {
+                'latitude': city_location['lat'],
+                'longitude': city_location['lon'],
+                'city': city_name,
+                'accuracy': 'city_center'
+            }
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': f'مختصات شهر {city_name} در دسترس نیست'
+        }), 404
+
+# اضافه کردن requests به requirements اگر نداری
+# pip install requests
 # ===============================
 # پایان کدهای آزمون
 # ===============================
