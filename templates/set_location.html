@@ -144,6 +144,15 @@
             background: #218838;
         }
         
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: #138496;
+        }
+        
         .location-buttons {
             display: flex;
             gap: 10px;
@@ -205,6 +214,83 @@
             text-align: center;
         }
         
+        .method-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .method-card {
+            background: white;
+            border: 2px solid #e1e1e1;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .method-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .method-card.active {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .method-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .city-selector {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e1e1;
+        }
+        
+        .city-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .city-btn {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .city-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -217,6 +303,10 @@
             
             .location-buttons {
                 flex-direction: column;
+            }
+            
+            .method-selector {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -250,20 +340,52 @@
         </div>
         
         <div class="location-form">
-            <h3 style="margin-bottom: 20px; color: #333;">دریافت مختصات جغرافیایی</h3>
+            <h3 style="margin-bottom: 20px; color: #333;">روش دریافت مختصات جغرافیایی</h3>
             
-            <div class="current-location-info" id="locationInfo" style="display: none;">
-                <h4>مکان فعلی شما:</h4>
-                <div class="coordinates-display" id="coordinatesDisplay"></div>
+            <!-- انتخاب روش -->
+            <div class="method-selector">
+                <div class="method-card" onclick="selectMethod('gps')">
+                    <div class="method-icon">📍</div>
+                    <h4>GPS مرورگر</h4>
+                    <p>دقیق‌ترین روش</p>
+                </div>
+                <div class="method-card" onclick="selectMethod('ip')">
+                    <div class="method-icon">🌐</div>
+                    <h4>بر اساس IP</h4>
+                    <p>روش جایگزین</p>
+                </div>
+                <div class="method-card" onclick="selectMethod('city')">
+                    <div class="method-icon">🏙️</div>
+                    <h4>انتخاب شهر</h4>
+                    <p>شهرهای بزرگ ایران</p>
+                </div>
+                <div class="method-card" onclick="selectMethod('manual')">
+                    <div class="method-icon">✏️</div>
+                    <h4>ورودی دستی</h4>
+                    <p>تایپ مختصات</p>
+                </div>
             </div>
             
-            <div class="location-buttons">
-                <button type="button" class="btn btn-success" onclick="getCurrentLocation()">
-                    دریافت مکان فعلی
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="showManualInput()">
-                    ورود دستی مختصات
-                </button>
+            <!-- انتخاب شهر -->
+            <div class="city-selector" id="citySelector" style="display: none;">
+                <h4>🏙️ انتخاب شهر:</h4>
+                <div class="city-buttons">
+                    <div class="city-btn" onclick="selectCity(35.6892, 51.3890, 'تهران')">تهران</div>
+                    <div class="city-btn" onclick="selectCity(32.6546, 51.6680, 'اصفهان')">اصفهان</div>
+                    <div class="city-btn" onclick="selectCity(29.5918, 52.5837, 'شیراز')">شیراز</div>
+                    <div class="city-btn" onclick="selectCity(36.2605, 59.6168, 'مشهد')">مشهد</div>
+                    <div class="city-btn" onclick="selectCity(38.0962, 46.2738, 'تبریز')">تبریز</div>
+                    <div class="city-btn" onclick="selectCity(35.8327, 50.9916, 'کرج')">کرج</div>
+                    <div class="city-btn" onclick="selectCity(31.3183, 48.6706, 'اهواز')">اهواز</div>
+                    <div class="city-btn" onclick="selectCity(37.4482, 49.1267, 'رشت')">رشت</div>
+                    <div class="city-btn" onclick="selectCity(34.6401, 50.8764, 'قم')">قم</div>
+                    <div class="city-btn" onclick="selectCity(36.5659, 53.0586, 'ساری')">ساری</div>
+                </div>
+            </div>
+            
+            <div class="current-location-info" id="locationInfo" style="display: none;">
+                <h4>وضعیت دریافت مکان:</h4>
+                <div class="coordinates-display" id="coordinatesDisplay"></div>
             </div>
             
             <form method="POST" action="{{ url_for('save_location') }}" id="locationForm" style="display: none;">
@@ -288,62 +410,188 @@
     </div>
 
     <script>
-        function getCurrentLocation() {
-            if ("geolocation" in navigator) {
-                document.getElementById('locationInfo').innerHTML = '<p>در حال دریافت مکان...</p>';
-                document.getElementById('locationInfo').style.display = 'block';
-                
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        const latitude = position.coords.latitude;
-                        const longitude = position.coords.longitude;
-                        
-                        document.getElementById('latitude').value = latitude;
-                        document.getElementById('longitude').value = longitude;
-                        
-                        document.getElementById('coordinatesDisplay').innerHTML = 
-                            `عرض جغرافیایی: ${latitude}<br>طول جغرافیایی: ${longitude}`;
-                        
-                        document.getElementById('locationInfo').style.display = 'block';
-                        document.getElementById('locationForm').style.display = 'block';
-                    },
-                    function(error) {
-                        let errorMessage = '';
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMessage = 'دسترسی به مکان رد شد. لطفاً دسترسی را فعال کنید.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMessage = 'اطلاعات مکان در دسترس نیست.';
-                                break;
-                            case error.TIMEOUT:
-                                errorMessage = 'زمان درخواست مکان به پایان رسید.';
-                                break;
-                            default:
-                                errorMessage = 'خطای نامشخص در دریافت مکان.';
-                                break;
-                        }
-                        
-                        document.getElementById('locationInfo').innerHTML = 
-                            `<p style="color: red;">خطا: ${errorMessage}</p>`;
-                        
-                        showManualInput();
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 60000
-                    }
-                );
-            } else {
-                alert('مرورگر شما از GPS پشتیبانی نمی‌کند. لطفاً مختصات را به صورت دستی وارد کنید.');
-                showManualInput();
+        function selectMethod(method) {
+            // Remove active class from all cards
+            document.querySelectorAll('.method-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            
+            // Add active class to selected card
+            event.currentTarget.classList.add('active');
+            
+            // Hide city selector
+            document.getElementById('citySelector').style.display = 'none';
+            
+            // Execute method
+            switch(method) {
+                case 'gps':
+                    getCurrentLocation();
+                    break;
+                case 'ip':
+                    getLocationByIP();
+                    break;
+                case 'city':
+                    showCitySelector();
+                    break;
+                case 'manual':
+                    showManualInput();
+                    break;
             }
+        }
+
+        function getCurrentLocation() {
+            if (!("geolocation" in navigator)) {
+                showError('مرورگر شما از GPS پشتیبانی نمی‌کند', 'لطفاً روش دیگری انتخاب کنید.');
+                return;
+            }
+
+            showLoading('📡 در حال دریافت مکان از GPS...');
+            
+            const options = {
+                enableHighAccuracy: false,
+                timeout: 15000,
+                maximumAge: 300000
+            };
+            
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    
+                    updateLocation(latitude, longitude, 'مکان فعلی شما (GPS)');
+                    showSuccess('✅ مکان با موفقیت از GPS دریافت شد');
+                },
+                function(error) {
+                    console.error('Geolocation error:', error);
+                    
+                    let errorMessage = 'خطا در دریافت مکان از GPS';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'دسترسی به مکان رد شد';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'موقعیت مکانی در دسترس نیست';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'زمان درخواست به پایان رسید';
+                            break;
+                    }
+                    
+                    showError(errorMessage, 'تلاش با روش IP...');
+                    
+                    // تلاش خودکار با IP
+                    setTimeout(() => {
+                        getLocationByIP();
+                    }, 2000);
+                },
+                options
+            );
+        }
+
+        function getLocationByIP() {
+            showLoading('🌐 دریافت مکان تقریبی بر اساس IP...');
+            
+            // استفاده از چند سرویس مختلف برای اطمینان بیشتر
+            const services = [
+                'https://ipapi.co/json/',
+                'https://api.ipify.org?format=json',
+                'https://httpbin.org/ip'
+            ];
+            
+            // تلاش با سرویس اول
+            fetch('https://ipapi.co/json/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.latitude && data.longitude) {
+                        const locationName = `${data.city || 'نامشخص'}, ${data.country_name || 'نامشخص'}`;
+                        updateLocation(data.latitude, data.longitude, locationName);
+                        showWarning('📍 مکان تقریبی بر اساس IP دریافت شد', 'این مکان ممکن است دقیق نباشد. در صورت نیاز تصحیح کنید.');
+                    } else {
+                        throw new Error('IP location data not available');
+                    }
+                })
+                .catch(error => {
+                    console.error('IP location failed:', error);
+                    
+                    // تلاش با تهران به عنوان پیش‌فرض
+                    updateLocation(35.6892, 51.3890, 'تهران (پیش‌فرض)');
+                    showWarning('⚠️ دریافت مکان بر اساس IP ناموفق بود', 'مکان پیش‌فرض (تهران) تنظیم شد. لطفاً تصحیح کنید.');
+                });
+        }
+
+        function showCitySelector() {
+            document.getElementById('citySelector').style.display = 'block';
+            showInfo('🏙️ لطفاً شهر خود را انتخاب کنید', '');
+        }
+
+        function selectCity(lat, lng, cityName) {
+            updateLocation(lat, lng, `مرکز شهر ${cityName}`);
+            showSuccess(`✅ مکان ${cityName} انتخاب شد`);
+            document.getElementById('citySelector').style.display = 'none';
         }
         
         function showManualInput() {
+            showInfo('✏️ لطفاً مختصات را به صورت دستی وارد کنید', '');
             document.getElementById('locationForm').style.display = 'block';
+            
+            // اضافه کردن placeholder برای راهنمایی
+            document.getElementById('latitude').placeholder = 'مثال: 35.6892 (تهران)';
+            document.getElementById('longitude').placeholder = 'مثال: 51.3890 (تهران)';
             document.getElementById('latitude').focus();
+        }
+
+        function updateLocation(lat, lng, locationName) {
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+            
+            document.getElementById('coordinatesDisplay').innerHTML = 
+                `عرض جغرافیایی: ${lat}<br>طول جغرافیایی: ${lng}<br>📍 ${locationName}`;
+            
+            document.getElementById('locationForm').style.display = 'block';
+        }
+
+        function showLoading(message) {
+            document.getElementById('locationInfo').innerHTML = 
+                `<div style="color: #0066cc;">
+                    <div class="loading"></div> ${message}
+                </div>`;
+            document.getElementById('locationInfo').style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            document.getElementById('locationInfo').innerHTML = 
+                `<div style="color: green;">
+                    <h4>${message}</h4>
+                </div>`;
+            document.getElementById('locationInfo').style.display = 'block';
+        }
+
+        function showError(message, solution) {
+            document.getElementById('locationInfo').innerHTML = 
+                `<div style="color: red;">
+                    <h4>❌ ${message}</h4>
+                    ${solution ? `<p style="font-size: 14px; margin-top: 10px;">${solution}</p>` : ''}
+                </div>`;
+            document.getElementById('locationInfo').style.display = 'block';
+        }
+
+        function showWarning(message, detail) {
+            document.getElementById('locationInfo').innerHTML = 
+                `<div style="color: orange;">
+                    <h4>${message}</h4>
+                    ${detail ? `<p style="font-size: 14px; margin-top: 10px;">${detail}</p>` : ''}
+                </div>`;
+            document.getElementById('locationInfo').style.display = 'block';
+        }
+
+        function showInfo(message, detail) {
+            document.getElementById('locationInfo').innerHTML = 
+                `<div style="color: #0066cc;">
+                    <h4>${message}</h4>
+                    ${detail ? `<p style="font-size: 14px; margin-top: 10px;">${detail}</p>` : ''}
+                </div>`;
+            document.getElementById('locationInfo').style.display = 'block';
         }
     </script>
 </body>
