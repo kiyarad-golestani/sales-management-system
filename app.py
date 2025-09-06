@@ -5,6 +5,7 @@ from datetime import datetime
 import jdatetime
 import requests
 import json
+import numpy as np
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-2024'
@@ -15,6 +16,32 @@ CUSTOMERS_FILE = 'customers.xlsx'
 VISITS_FILE = 'visits.xlsx'
 EXAMS_FILE = 'azmon.xlsx'  # ← این خط را اضافه کنید
 
+
+# تابع کمکی برای تبدیل امن به JSON
+def safe_json_response(data):
+    """تبدیل امن داده‌ها به JSON response"""
+    def convert_numpy_types(obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif pd.isna(obj):
+            return None
+        return obj
+    
+    # تبدیل recursive همه مقادیر
+    def recursive_convert(data):
+        if isinstance(data, dict):
+            return {k: recursive_convert(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [recursive_convert(item) for item in data]
+        else:
+            return convert_numpy_types(data)
+    
+    clean_data = recursive_convert(data)
+    return jsonify(clean_data)
 
 def load_brand_order_from_excel():
     """بارگذاری ترتیب برندها از شیت brand در فایل products.xlsx"""
@@ -4099,6 +4126,663 @@ def api_location_city(city_name):
             'error': f'مختصات شهر {city_name} در دسترس نیست'
         }), 404
 
+# اضافه کردن این route به app.py برای مدیریت ترتیب برندها
+
+@app.route('/brand_management')
+def brand_management():
+    """صفحه مدیریت ترتیب برندها - فقط برای ادمین"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # فقط ادمین می‌تونه این صفحه رو ببینه
+    if session['user_info']['Typev'] != 'admin':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    return render_template('brand_management.html', user=session['user_info'])
+
+@app.route('/get_current_brand_order')
+def get_current_brand_order():
+    """دریافت ترتیب فعلی برندها"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # بارگذاری محصولات برای دریافت لیست کامل برندها
+        products_df = load_products_from_excel()
+        if products_df is None:
+            return jsonify({'error': 'فایل محصولات یافت نشد'}), 500
+        
+        # تمام برندهای موجود
+        all_brands = sorted(products_df['Brand'].dropna().unique().tolist())
+        
+        # ترتیب فعلی از شیت brand
+        current_order = load_brand_order_from_excel()
+        
+        if current_order:
+            # برندهای جدیدی که در شیت brand نیست را اضافه کن
+            for brand in all_brands:
+                if brand not in current_order:
+                    current_order.append(brand)
+            
+            return jsonify({
+                'success': True,
+                'current_order': current_order,
+                'all_brands': all_brands,
+                'has_custom_order': True
+            })
+        else:
+            # اگر شیت brand وجود ندارد، ترتیب الفبایی
+            return jsonify({
+                'success': True,
+                'current_order': all_brands,
+                'all_brands': all_brands,
+                'has_custom_order': False
+            })
+            
+    except Exception as e:
+        print(f"❌ Error in get_current_brand_order: {str(e)}")
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/update_brand_order', methods=['POST'])
+def update_brand_order():
+    """به‌روزرسانی ترتیب برندها"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        data = request.get_json()
+        new_order = data.get('brand_order', [])
+        
+        if not new_order or not isinstance(new_order, list):
+            return jsonify({'error': 'ترتیب برندها نامعتبر است'}), 400
+        
+        print(f"🔄 Updating brand order to: {new_order}")
+        
+        # ذخیره ترتیب جدید
+        if save_brand_order_to_excel(new_order):
+            return jsonify({
+                'success': True,
+                'message': 'ترتیب برندها با موفقیت به‌روزرسانی شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره ترتیب جدید'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error in update_brand_order: {str(e)}")
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/reset_brand_order', methods=['POST'])
+def reset_brand_order():
+    """بازنشانی ترتیب برندها به حالت الفبایی"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    try:
+        # بارگذاری محصولات
+        products_df = load_products_from_excel()
+        if products_df is None:
+            return jsonify({'error': 'فایل محصولات یافت نشد'}), 500
+        
+        # ترتیب الفبایی برندها
+        alphabetical_order = sorted(products_df['Brand'].dropna().unique().tolist())
+        
+        print(f"🔄 Resetting brand order to alphabetical: {alphabetical_order}")
+        
+        # ذخیره ترتیب الفبایی
+        if save_brand_order_to_excel(alphabetical_order):
+            return jsonify({
+                'success': True,
+                'new_order': alphabetical_order,
+                'message': 'ترتیب برندها به حالت الفبایی بازنشانی شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در بازنشانی ترتیب'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error in reset_brand_order: {str(e)}")
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+    
+# مقایسه
+
+# اضافه کردن این کدها به فایل app.py
+
+@app.route('/comparative_sales_report')
+def comparative_sales_report():
+    """صفحه گزارش مقایسه‌ای فروش - برای ادمین و کاربران"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('comparative_sales_report.html', user=session['user_info'])
+
+def clean_dataframe_for_json(df):
+    """تمیز کردن DataFrame از مقادیر NaN برای JSON serialization"""
+    if df is None or df.empty:
+        return df
+    
+    df = df.copy()
+    
+    # تبدیل همه مقادیر NaN به مقادیر مناسب
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].fillna('').astype(str)
+        elif df[col].dtype in ['int64', 'float64', 'int32', 'float32']:
+            df[col] = df[col].fillna(0)
+        elif df[col].dtype == 'bool':
+            df[col] = df[col].fillna(False)
+    
+    return df
+
+def safe_convert_to_dict(data):
+    """تبدیل امن داده‌ها به dict با حذف مقادیر NaN"""
+    if isinstance(data, pd.DataFrame):
+        # تمیز کردن DataFrame
+        clean_data = clean_dataframe_for_json(data)
+        return clean_data.to_dict('records')
+    elif isinstance(data, dict):
+        # تمیز کردن dictionary
+        clean_dict = {}
+        for key, value in data.items():
+            if pd.isna(value):
+                if isinstance(value, (int, float)):
+                    clean_dict[key] = 0
+                else:
+                    clean_dict[key] = ''
+            else:
+                clean_dict[key] = value
+        return clean_dict
+    else:
+        return data
+
+
+def get_sales_comparison_data(periods, user_code=None, user_type='admin'):
+    """
+    محاسبه داده‌های مقایسه‌ای فروش برای چندین دوره
+    periods: لیستی از دوره‌ها شامل سال و ماه‌ها
+    user_code: کد کاربر (برای فیلتر کردن مشتریان)
+    user_type: نوع کاربر (admin یا user)
+    """
+    try:
+        print(f"🔄 Starting comparative sales analysis for {len(periods)} periods")
+        
+        # بارگذاری داده‌ها
+        sales_df = load_sales_from_excel()
+        customers_df = load_customers_from_excel()
+        products_df = load_products_from_excel()
+        
+        if sales_df is None or customers_df is None or products_df is None:
+            print("❌ Failed to load required data files")
+            return None
+        
+        # تمیز کردن داده‌ها از NaN
+        print("🧹 Cleaning data from NaN values...")
+        sales_df = clean_dataframe_for_json(sales_df)
+        customers_df = clean_dataframe_for_json(customers_df)
+        products_df = clean_dataframe_for_json(products_df)
+        
+        print(f"📊 Data loaded: {len(sales_df)} sales, {len(customers_df)} customers")
+        
+        # فیلتر مشتریان بر اساس نوع کاربر
+        if user_type != 'admin' and user_code:
+            my_customers = customers_df[customers_df['BazaryabCode'] == user_code]
+            customer_codes = my_customers['CustomerCode'].tolist()
+            filtered_customers = my_customers
+            print(f"👤 User filter applied: {len(customer_codes)} customers for user {user_code}")
+        else:
+            customer_codes = customers_df['CustomerCode'].tolist()
+            filtered_customers = customers_df
+            print(f"👑 Admin access: {len(customer_codes)} total customers")
+        
+        # فیلتر فروش‌های مربوط به مشتریان
+        relevant_sales = sales_df[sales_df['CustomerCode'].isin(customer_codes)]
+        print(f"💰 Relevant sales found: {len(relevant_sales)} records")
+        
+        # آماده کردن داده‌های مقایسه‌ای
+        comparison_data = {}
+        
+        # پردازش هر دوره
+        for period_index, period in enumerate(periods):
+            year = int(period['year'])
+            months = [int(m) for m in period['months']]
+            period_key = f"{year}_{'-'.join(map(str, months))}"
+            
+            print(f"🔍 Processing period {period_index + 1}: Year {year}, Months {months}")
+            
+            period_sales = []
+            
+            # فیلتر فروش‌ها برای هر ماه در سال انتخابی
+            for month in months:
+                month_sales = filter_sales_by_jalali_date_range(
+                    relevant_sales, year, month, year, month
+                )
+                if not month_sales.empty:
+                    period_sales.append(month_sales)
+            
+            # ترکیب فروش‌های دوره
+            if period_sales:
+                combined_sales = pd.concat(period_sales, ignore_index=True)
+                # تمیز کردن داده‌های ترکیبی
+                combined_sales = clean_dataframe_for_json(combined_sales)
+            else:
+                combined_sales = pd.DataFrame()
+            
+            print(f"   📈 Period sales: {len(combined_sales)} records")
+            
+            # محاسبه آمار هر مشتری در این دوره
+            period_customer_stats = {}
+            
+            for _, customer in filtered_customers.iterrows():
+                customer_code = str(customer['CustomerCode']).strip()
+                customer_name = str(customer['CustomerName']).strip()
+                
+                customer_sales = combined_sales[
+                    combined_sales['CustomerCode'] == customer_code
+                ] if not combined_sales.empty else pd.DataFrame()
+                
+                # محاسبه آمار با در نظر گیری مقادیر خالی
+                total_amount = 0
+                total_quantity = 0
+                unique_products = 0
+                order_count = 0
+                
+                if not customer_sales.empty:
+                    # محاسبه امن مبلغ کل
+                    amounts = customer_sales['TotalAmount'].fillna(0)
+                    total_amount = float(amounts.sum()) if not amounts.empty else 0
+                    
+                    # محاسبه امن تعداد
+                    quantities = customer_sales['Quantity'].fillna(0)
+                    total_quantity = int(quantities.sum()) if not quantities.empty else 0
+                    
+                    # تعداد محصولات منحصر به فرد
+                    unique_products = len(customer_sales['ProductCode'].dropna().unique())
+                    order_count = len(customer_sales)
+                
+                period_customer_stats[customer_code] = {
+                    'customer_name': customer_name,
+                    'total_amount': float(total_amount),
+                    'total_quantity': int(total_quantity),
+                    'unique_products': int(unique_products),
+                    'order_count': int(order_count)
+                }
+            
+            # محاسبه مجموع دوره
+            period_total = sum([
+                float(stats['total_amount']) for stats in period_customer_stats.values()
+            ])
+            
+            comparison_data[period_key] = {
+                'year': int(year),
+                'months': [int(m) for m in months],
+                'customers': period_customer_stats,
+                'period_total': float(period_total),
+                'period_description': f"سال {year} - ماه‌های {', '.join(map(str, months))}"
+            }
+            
+            print(f"   ✅ Period {period_index + 1} processed: {len(period_customer_stats)} customers, total: {period_total:,.0f}")
+        
+        print(f"🎉 Comparative analysis completed successfully!")
+        return comparison_data
+        
+    except Exception as e:
+        print(f"❌ Error in get_sales_comparison_data: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+#
+def filter_sales_by_jalali_date_range(sales_df, start_year, start_month, end_year, end_month):
+    """فیلتر کردن فروش در بازه تاریخی شمسی"""
+    try:
+        if sales_df.empty:
+            return pd.DataFrame()
+        
+        filtered_rows = []
+        
+        for index, row in sales_df.iterrows():
+            try:
+                invoice_date = row['InvoiceDate']
+                
+                if pd.isna(invoice_date):
+                    continue
+                
+                # تبدیل تاریخ به شمسی
+                if isinstance(invoice_date, str):
+                    if '/' in invoice_date:
+                        # فرمت شمسی: 1403/01/15
+                        date_parts = invoice_date.split('/')
+                        if len(date_parts) == 3:
+                            invoice_year = int(date_parts[0])
+                            invoice_month = int(date_parts[1])
+                            
+                            # بررسی قرار گیری در بازه
+                            if (invoice_year == start_year and invoice_month >= start_month and
+                                invoice_year == end_year and invoice_month <= end_month) or \
+                               (invoice_year > start_year and invoice_year < end_year) or \
+                               (invoice_year == start_year and invoice_month >= start_month and invoice_year < end_year) or \
+                               (invoice_year > start_year and invoice_year == end_year and invoice_month <= end_month):
+                                filtered_rows.append(row)
+                    elif '-' in invoice_date:
+                        # فرمت میلادی: 2024-03-21
+                        gregorian_date = datetime.strptime(invoice_date, '%Y-%m-%d').date()
+                        jalali_date = jdatetime.date.fromgregorian(date=gregorian_date)
+                        
+                        invoice_year = jalali_date.year
+                        invoice_month = jalali_date.month
+                        
+                        if (invoice_year == start_year and invoice_month >= start_month and
+                            invoice_year == end_year and invoice_month <= end_month) or \
+                           (invoice_year > start_year and invoice_year < end_year) or \
+                           (invoice_year == start_year and invoice_month >= start_month and invoice_year < end_year) or \
+                           (invoice_year > start_year and invoice_year == end_year and invoice_month <= end_month):
+                            filtered_rows.append(row)
+                            
+            except (ValueError, AttributeError):
+                continue
+        
+        return pd.DataFrame(filtered_rows) if filtered_rows else pd.DataFrame()
+        
+    except Exception as e:
+        print(f"Error in filter_sales_by_jalali_date_range: {e}")
+        return pd.DataFrame()
+
+@app.route('/get_comparative_sales_data', methods=['POST'])
+def get_comparative_sales_data():
+    """API برای درافت داده‌های مقایسه‌ای فروش - اصلاح شده"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+        
+        data = request.get_json()
+        periods = data.get('periods', [])
+        
+        if not periods or len(periods) < 1:
+            return jsonify({'success': False, 'error': 'حداقل یک دوره باید انتخاب شود'}), 400
+        
+        print(f"📊 Comparative sales analysis request for {len(periods)} periods")
+        
+        # درافت داده‌های مقایسه‌ای
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        comparison_data = get_sales_comparison_data(periods, user_code, user_type)
+        
+        if comparison_data is None:
+            return jsonify({'success': False, 'error': 'خطا در پردازش داده‌ها'}), 500
+        
+        # محاسبه آمار مقایسه‌ای
+        period_keys = list(comparison_data.keys())
+        customer_comparison = {}
+        
+        # لیست کلیه مشتریان در تمام دوره‌ها
+        all_customers = set()
+        for period_data in comparison_data.values():
+            all_customers.update(period_data['customers'].keys())
+        
+        print(f"👥 Total unique customers across all periods: {len(all_customers)}")
+        
+        # مقایسه هر مشتری در دوره‌های مختلف
+        for customer_code in all_customers:
+            customer_periods = {}
+            customer_name = 'نامشخص'
+            
+            for period_key, period_data in comparison_data.items():
+                if customer_code in period_data['customers']:
+                    customer_info = period_data['customers'][customer_code]
+                    customer_name = customer_info['customer_name']
+                    customer_periods[period_key] = customer_info
+                else:
+                    customer_periods[period_key] = {
+                        'customer_name': customer_name,
+                        'total_amount': 0,
+                        'total_quantity': 0,
+                        'unique_products': 0,
+                        'order_count': 0
+                    }
+            
+            # محاسبه تغییرات
+            period_values = list(customer_periods.values())
+            changes = []
+            
+            if len(period_values) >= 2:
+                for i in range(1, len(period_values)):
+                    current = float(period_values[i]['total_amount'])
+                    previous = float(period_values[i-1]['total_amount'])
+                    
+                    if previous > 0:
+                        change_percent = ((current - previous) / previous) * 100
+                        change_amount = current - previous
+                    else:
+                        change_percent = 100.0 if current > 0 else 0.0
+                        change_amount = current
+                    
+                    changes.append({
+                        'change_percent': round(float(change_percent), 1),
+                        'change_amount': int(change_amount),
+                        'trend': 'رشد' if change_amount > 0 else 'افت' if change_amount < 0 else 'ثابت'
+                    })
+            
+            total_across_periods = sum([float(p['total_amount']) for p in period_values])
+            average_per_period = total_across_periods / len(period_values) if period_values else 0
+            
+            customer_comparison[customer_code] = {
+                'customer_name': customer_name,
+                'periods': customer_periods,
+                'changes': changes,
+                'total_across_periods': float(total_across_periods),
+                'average_per_period': float(average_per_period)
+            }
+        
+        # آمار کلی
+        summary_stats = {}
+        for period_key, period_data in comparison_data.items():
+            active_customers = len([
+                c for c in period_data['customers'].values() 
+                if float(c['total_amount']) > 0
+            ])
+            
+            summary_stats[period_key] = {
+                'period_description': period_data['period_description'],
+                'total_sales': int(float(period_data['period_total'])),
+                'active_customers': int(active_customers),
+                'total_customers': len(period_data['customers'])
+            }
+        
+        print(f"✅ Analysis complete: {len(customer_comparison)} customers analyzed")
+        
+        # اطمینان از عدم وجود مقادیر NaN در response نهایی
+        response_data = {
+            'success': True,
+            'periods': periods,
+            'customer_comparison': customer_comparison,
+            'summary_stats': summary_stats,
+            'period_descriptions': {
+                k: str(v['period_description']) for k, v in comparison_data.items()
+            }
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"❌ Error in get_comparative_sales_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'error': f'خطای سرور: {str(e)}'
+        }), 500
+
+@app.route('/get_customer_detailed_comparison', methods=['POST'])
+def get_customer_detailed_comparison():
+    """API برای دریافت جزئیات مقایسه‌ای یک مشتری خاص"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        data = request.get_json()
+        customer_code = data.get('customer_code')
+        periods = data.get('periods', [])
+        
+        if not customer_code or not periods:
+            return jsonify({'error': 'کد مشتری و دوره‌ها الزامی است'}), 400
+        
+        print(f"🔍 Detailed analysis for customer: {customer_code}")
+        
+        # بارگذاری داده‌ها
+        customers_df = load_customers_from_excel()
+        products_df = load_products_from_excel()
+        sales_df = load_sales_from_excel()
+        
+        if customers_df is None or products_df is None or sales_df is None:
+            return jsonify({'error': 'خطا در بارگذاری فایل‌ها'}), 500
+        
+        # بررسی دسترسی کاربر به این مشتری
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        if user_type != 'admin':
+            customer_info = customers_df[customers_df['CustomerCode'] == customer_code]
+            if customer_info.empty or customer_info.iloc[0]['BazaryabCode'] != user_code:
+                return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # اطلاعات کلی مشتری
+        customer_info = customers_df[customers_df['CustomerCode'] == customer_code]
+        if customer_info.empty:
+            return jsonify({'error': 'مشتری یافت نشد'}), 404
+        
+        customer_detail = customer_info.iloc[0].to_dict()
+        
+        # تحلیل هر دوره
+        period_analysis = {}
+        all_products_purchased = set()
+        
+        for period in periods:
+            year = period['year']
+            months = period['months']
+            period_key = f"{year}_{'-'.join(map(str, months))}"
+            
+            # فیلتر فروش‌ها برای این دوره
+            period_sales = []
+            for month in months:
+                month_sales = filter_sales_by_jalali_date_range(
+                    sales_df[sales_df['CustomerCode'] == customer_code],
+                    year, month, year, month
+                )
+                if not month_sales.empty:
+                    period_sales.append(month_sales)
+            
+            if period_sales:
+                combined_sales = pd.concat(period_sales, ignore_index=True)
+            else:
+                combined_sales = pd.DataFrame()
+            
+            # محاسبه فروش هر محصول
+            product_sales = {}
+            period_total = 0
+            
+            if not combined_sales.empty:
+                for _, sale in combined_sales.iterrows():
+                    product_code = sale['ProductCode']
+                    amount = float(sale.get('TotalAmount', 0))
+                    quantity = int(sale.get('Quantity', 0))
+                    
+                    if product_code not in product_sales:
+                        product_sales[product_code] = {
+                            'total_amount': 0,
+                            'total_quantity': 0,
+                            'purchase_dates': []
+                        }
+                    
+                    product_sales[product_code]['total_amount'] += amount
+                    product_sales[product_code]['total_quantity'] += quantity
+                    product_sales[product_code]['purchase_dates'].append({
+                        'date': sale.get('InvoiceDate', ''),
+                        'amount': amount,
+                        'quantity': quantity
+                    })
+                    
+                    period_total += amount
+                    all_products_purchased.add(product_code)
+            
+            # اطلاعات محصولات خریداری شده
+            purchased_products = []
+            for product_code, sales_data in product_sales.items():
+                product_info = products_df[products_df['ProductCode'] == product_code]
+                
+                if not product_info.empty:
+                    product_detail = product_info.iloc[0]
+                    purchased_products.append({
+                        'product_code': product_code,
+                        'product_name': product_detail.get('ProductName', ''),
+                        'brand': product_detail.get('Brand', ''),
+                        'category': product_detail.get('Category', ''),
+                        'price': float(product_detail.get('Price', 0)),
+                        'total_amount': int(sales_data['total_amount']),
+                        'total_quantity': int(sales_data['total_quantity']),
+                        'purchase_dates': sales_data['purchase_dates']
+                    })
+            
+            # مرتب‌سازی بر اساس مبلغ خرید
+            purchased_products.sort(key=lambda x: x['total_amount'], reverse=True)
+            
+            period_analysis[period_key] = {
+                'year': year,
+                'months': months,
+                'period_description': f"سال {year} - ماه‌های {', '.join(map(str, months))}",
+                'purchased_products': purchased_products,
+                'period_total': int(period_total),
+                'unique_products_count': len(purchased_products)
+            }
+        
+        # محصولات خریداری نشده (محصولات موجود که این مشتری نخریده)
+        all_purchased_codes = list(all_products_purchased)
+        not_purchased_products = []
+        
+        for _, product in products_df.iterrows():
+            if product['ProductCode'] not in all_purchased_codes:
+                not_purchased_products.append({
+                    'product_code': product['ProductCode'],
+                    'product_name': product.get('ProductName', ''),
+                    'brand': product.get('Brand', ''),
+                    'category': product.get('Category', ''),
+                    'price': float(product.get('Price', 0))
+                })
+        
+        # مرتب‌سازی بر اساس قیمت
+        not_purchased_products.sort(key=lambda x: x['price'], reverse=True)
+        
+        print(f"✅ Detailed analysis complete for customer {customer_code}")
+        
+        return jsonify({
+            'success': True,
+            'customer': customer_detail,
+            'periods': periods,
+            'period_analysis': period_analysis,
+            'not_purchased_products': not_purchased_products[:50],  # محدود کردن به 50 محصول
+            'summary': {
+                'total_across_periods': sum([p['period_total'] for p in period_analysis.values()]),
+                'unique_products_purchased': len(all_purchased_codes),
+                'products_not_purchased': len(not_purchased_products)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_customer_detailed_comparison: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+    
 # اضافه کردن requests به requirements اگر نداری
 # pip install requests
 # ===============================
