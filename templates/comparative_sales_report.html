@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش مقایسه‌ای فروش</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+        
+        .back-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* بخش انتخاب دوره‌ها */
+        .period-selection {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid #e1e1e1;
+        }
+        
+        .period-selection h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .periods-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .period-item {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .year-selector {
+            min-width: 120px;
+        }
+        
+        .year-selector select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .months-selector {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .month-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #f1f3f4;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .month-checkbox.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .month-checkbox input {
+            margin: 0;
+        }
+        
+        .period-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        /* نتایج مقایسه‌ای */
+        .results-section {
+            display: none;
+        }
+        
+        .results-section.show {
+            display: block;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card h4 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        /* جدول مقایسه‌ای */
+        .table-responsive {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            min-width: 800px;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e1e1e1;
+        }
+        
+        .comparison-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        .comparison-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .trend-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .trend-up {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .trend-down {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .trend-stable {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        /* مودال جزئیات */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 22px;
+        }
+        
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        .close:hover {
+            opacity: 0.7;
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        .period-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .period-tab {
+            padding: 10px 20px;
+            background: #f1f3f4;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .period-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .period-content {
+            display: none;
+        }
+        
+        .period-content.active {
+            display: block;
+        }
+        
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .product-card {
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+            transition: all 0.3s;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .product-card.purchased {
+            border-left: 4px solid #28a745;
+            background: #f8fff9;
+        }
+        
+        .product-card.not-purchased {
+            border-left: 4px solid #dc3545;
+            background: #fff8f8;
+        }
+        
+        .product-card h5 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .product-info {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .product-sales {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e1e1e1;
+        }
+        
+        .product-sales strong {
+            color: #28a745;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .loading .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        @media (max-width: 768px) {
+            .period-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .months-selector {
+                justify-content: center;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+            
+            .comparison-table {
+                font-size: 12px;
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 8px 4px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>گزارش مقایسه‌ای فروش</h1>
+            <a href="{{ url_for('index') }}" class="back-btn">بازگشت به داشبورد</a>
+        </div>
+
+        <!-- بخش انتخاب دوره‌ها -->
+        <div class="period-selection">
+            <h3>انتخاب دوره‌های مقایسه</h3>
+            
+            <div class="periods-container" id="periodsContainer">
+                <!-- دوره اول -->
+                <div class="period-item">
+                    <div class="year-selector">
+                        <label>سال:</label>
+                        <select class="year-select">
+                            <option value="1403">1403</option>
+                            <option value="1404" selected>1404</option>
+                        </select>
+                    </div>
+                    
+                    <div class="months-selector">
+                        <div class="month-checkbox" data-month="1">
+                            <input type="checkbox" id="month_1_1" value="1">
+                            <label for="month_1_1">فروردین</label>
+                        </div>
+                        <div class="month-checkbox" data-month="2">
+                            <input type="checkbox" id="month_1_2" value="2">
+                            <label for="month_1_2">اردیبهشت</label>
+                        </div>
+                        <div class="month-checkbox" data-month="3">
+                            <input type="checkbox" id="month_1_3" value="3">
+                            <label for="month_1_3">خرداد</label>
+                        </div>
+                        <div class="month-checkbox" data-month="4">
+                            <input type="checkbox" id="month_1_4" value="4">
+                            <label for="month_1_4">تیر</label>
+                        </div>
+                        <div class="month-checkbox" data-month="5">
+                            <input type="checkbox" id="month_1_5" value="5">
+                            <label for="month_1_5">مرداد</label>
+                        </div>
+                        <div class="month-checkbox" data-month="6">
+                            <input type="checkbox" id="month_1_6" value="6">
+                            <label for="month_1_6">شهریور</label>
+                        </div>
+                        <div class="month-checkbox" data-month="7">
+                            <input type="checkbox" id="month_1_7" value="7">
+                            <label for="month_1_7">مهر</label>
+                        </div>
+                        <div class="month-checkbox" data-month="8">
+                            <input type="checkbox" id="month_1_8" value="8">
+                            <label for="month_1_8">آبان</label>
+                        </div>
+                        <div class="month-checkbox" data-month="9">
+                            <input type="checkbox" id="month_1_9" value="9">
+                            <label for="month_1_9">آذر</label>
+                        </div>
+                        <div class="month-checkbox" data-month="10">
+                            <input type="checkbox" id="month_1_10" value="10">
+                            <label for="month_1_10">دی</label>
+                        </div>
+                        <div class="month-checkbox" data-month="11">
+                            <input type="checkbox" id="month_1_11" value="11">
+                            <label for="month_1_11">بهمن</label>
+                        </div>
+                        <div class="month-checkbox" data-month="12">
+                            <input type="checkbox" id="month_1_12" value="12">
+                            <label for="month_1_12">اسفند</label>
+                        </div>
+                    </div>
+                    
+                    <div class="period-controls">
+                        <button class="btn btn-danger btn-small remove-period">حذف</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-secondary" id="addPeriodBtn">افزودن دوره جدید</button>
+                <button class="btn btn-primary" id="compareBtn">مقایسه دوره‌ها</button>
+            </div>
+        </div>
+
+        <!-- بخش نتایج -->
+        <div class="results-section" id="resultsSection">
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>در حال پردازش داده‌ها...</p>
+            </div>
+            
+            <!-- آمار کلی -->
+            <div class="summary-stats" id="summaryStats"></div>
+            
+            <!-- جدول مقایسه‌ای -->
+            <div class="table-responsive">
+                <table class="comparison-table" id="comparisonTable">
+                    <thead></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال جزئیات مشتری -->
+    <div class="modal" id="customerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalCustomerName">جزئیات مشتری</h3>
+                <button class="close" id="closeModal">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="period-tabs" id="periodTabs"></div>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // متغیرهای سراسری
+        let periodCounter = 1;
+        let currentComparisonData = null;
+        const monthNames = {
+            1: 'فروردین', 2: 'اردیبهشت', 3: 'خرداد', 4: 'تیر',
+            5: 'مرداد', 6: 'شهریور', 7: 'مهر', 8: 'آبان',
+            9: 'آذر', 10: 'دی', 11: 'بهمن', 12: 'اسفند'
+        };
+
+        // مدیریت انتخاب ماه‌ها
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('month-checkbox') || e.target.closest('.month-checkbox')) {
+                const checkbox = e.target.closest('.month-checkbox');
+                const input = checkbox.querySelector('input[type="checkbox"]');
+                
+                if (input.checked) {
+                    checkbox.classList.add('selected');
+                } else {
+                    checkbox.classList.remove('selected');
+                }
+            }
+        });
+
+        // کلیک روی month-checkbox
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('month-checkbox') || e.target.closest('.month-checkbox')) {
+                const checkbox = e.target.closest('.month-checkbox');
+                const input = checkbox.querySelector('input[type="checkbox"]');
+                
+                if (e.target !== input) {
+                    input.checked = !input.checked;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+
+        // افزودن دوره جدید
+        document.getElementById('addPeriodBtn').addEventListener('click', function() {
+            periodCounter++;
+            const periodHtml = createPeriodHtml(periodCounter);
+            document.getElementById('periodsContainer').insertAdjacentHTML('beforeend', periodHtml);
+        });
+
+        // حذف دوره
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-period')) {
+                const periods = document.querySelectorAll('.period-item');
+                if (periods.length > 1) {
+                    e.target.closest('.period-item').remove();
+                } else {
+                    alert('حداقل یک دوره باید باقی بماند!');
+                }
+            }
+        });
+
+        // ایجاد HTML برای دوره جدید
+        function createPeriodHtml(counter) {
+            return `
+                <div class="period-item">
+                    <div class="year-selector">
+                        <label>سال:</label>
+                        <select class="year-select">
+                            <option value="1403">1403</option>
+                            <option value="1404" selected>1404</option>
+                        </select>
+                    </div>
+                    
+                    <div class="months-selector">
+                        ${Object.keys(monthNames).map(month => `
+                            <div class="month-checkbox" data-month="${month}">
+                                <input type="checkbox" id="month_${counter}_${month}" value="${month}">
+                                <label for="month_${counter}_${month}">${monthNames[month]}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="period-controls">
+                        <button class="btn btn-danger btn-small remove-period">حذف</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // مقایسه دوره‌ها
+        document.getElementById('compareBtn').addEventListener('click', function() {
+            const periods = collectSelectedPeriods();
+            
+            if (periods.length === 0) {
+                alert('لطفاً حداقل یک دوره انتخاب کنید!');
+                return;
+            }
+
+            // نمایش بخش نتایج و loading
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.classList.add('show');
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('summaryStats').style.display = 'none';
+            document.getElementById('comparisonTable').style.display = 'none';
+
+            // ارسال درخواست
+            fetch('/get_comparative_sales_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    periods: periods
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                
+                if (data.success) {
+                    currentComparisonData = data;
+                    displayComparisonResults(data);
+                } else {
+                    alert('خطا: ' + data.error);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                console.error('Error:', error);
+                alert('خطا در دریافت داده‌ها');
+            });
+        });
+
+        // جمع‌آوری دوره‌های انتخاب شده
+        function collectSelectedPeriods() {
+            const periods = [];
+            const periodItems = document.querySelectorAll('.period-item');
+            
+            periodItems.forEach(item => {
+                const year = parseInt(item.querySelector('.year-select').value);
+                const selectedMonths = [];
+                
+                const checkboxes = item.querySelectorAll('.month-checkbox input:checked');
+                checkboxes.forEach(checkbox => {
+                    selectedMonths.push(parseInt(checkbox.value));
+                });
+                
+                if (selectedMonths.length > 0) {
+                    periods.push({
+                        year: year,
+                        months: selectedMonths.sort((a, b) => a - b)
+                    });
+                }
+            });
+            
+            return periods;
+        }
+
+        // نمایش نتایج مقایسه‌ای
+        function displayComparisonResults(data) {
+            displaySummaryStats(data.summary_stats, data.period_descriptions);
+            displayComparisonTable(data.customer_comparison, data.periods);
+            
+            document.getElementById('summaryStats').style.display = 'grid';
+            document.getElementById('comparisonTable').style.display = 'table';
+        }
+
+        // نمایش آمار کلی
+        function displaySummaryStats(summaryStats, periodDescriptions) {
+            const container = document.getElementById('summaryStats');
+            container.innerHTML = '';
+            
+            Object.keys(summaryStats).forEach(periodKey => {
+                const stats = summaryStats[periodKey];
+                const description = periodDescriptions[periodKey];
+                
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+                card.innerHTML = `
+                    <h4>${description}</h4>
+                    <div class="value">${stats.total_sales.toLocaleString()} ریال</div>
+                    <div style="font-size: 12px; margin-top: 5px;">
+                        ${stats.active_customers} مشتری فعال از ${stats.total_customers} مشتری
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // نمایش جدول مقایسه‌ای
+        function displayComparisonTable(customerComparison, periods) {
+            const table = document.getElementById('comparisonTable');
+            const thead = table.querySelector('thead');
+            const tbody = table.querySelector('tbody');
+            
+            // ایجاد هدر جدول
+            thead.innerHTML = `
+                <tr>
+                    <th>مشتری</th>
+                    ${periods.map(period => 
+                        `<th>سال ${period.year}<br>ماه‌های ${period.months.join('، ')}</th>`
+                    ).join('')}
+                    <th>تغییرات</th>
+                    <th>مجموع</th>
+                    <th>عملیات</th>
+                </tr>
+            `;
+            
+            // ایجاد ردیف‌های جدول
+            tbody.innerHTML = '';
+            
+            Object.keys(customerComparison).forEach(customerCode => {
+                const customer = customerComparison[customerCode];
+                const row = document.createElement('tr');
+                
+                // نام مشتری
+                const customerCell = document.createElement('td');
+                customerCell.innerHTML = `
+                    <strong>${customer.customer_name}</strong><br>
+                    <small style="color: #666;">${customerCode}</small>
+                `;
+                row.appendChild(customerCell);
+                
+                // داده‌های هر دوره
+                periods.forEach(period => {
+                    const periodKey = `${period.year}_${period.months.join('-')}`;
+                    const periodData = customer.periods[periodKey];
+                    
+                    const cell = document.createElement('td');
+                    cell.innerHTML = `
+                        <strong>${periodData.total_amount.toLocaleString()} ریال</strong><br>
+                        <small>${periodData.unique_products} محصول | ${periodData.order_count} سفارش</small>
+                    `;
+                    row.appendChild(cell);
+                });
+                
+                // تغییرات
+                const changesCell = document.createElement('td');
+                if (customer.changes.length > 0) {
+                    const latestChange = customer.changes[customer.changes.length - 1];
+                    const trendClass = latestChange.trend === 'رشد' ? 'trend-up' : 
+                                     latestChange.trend === 'افت' ? 'trend-down' : 'trend-stable';
+                    
+                    changesCell.innerHTML = `
+                        <div class="trend-indicator ${trendClass}">
+                            ${latestChange.trend}
+                            <br>
+                            ${latestChange.change_percent}%
+                        </div>
+                    `;
+                } else {
+                    changesCell.innerHTML = '<span style="color: #666;">-</span>';
+                }
+                row.appendChild(changesCell);
+                
+                // مجموع
+                const totalCell = document.createElement('td');
+                totalCell.innerHTML = `
+                    <strong>${customer.total_across_periods.toLocaleString()} ریال</strong>
+                `;
+                row.appendChild(totalCell);
+                
+                // دکمه جزئیات
+                const actionsCell = document.createElement('td');
+                actionsCell.innerHTML = `
+                    <button class="btn btn-primary btn-small" onclick="showCustomerDetails('${customerCode}')">
+                        جزئیات
+                    </button>
+                `;
+                row.appendChild(actionsCell);
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // نمایش جزئیات مشتری
+        function showCustomerDetails(customerCode) {
+            const periods = collectSelectedPeriods();
+            
+            // نمایش modal
+            const modal = document.getElementById('customerModal');
+            modal.style.display = 'block';
+            
+            // نمایش loading
+            document.getElementById('modalContent').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>در حال بارگذاری جزئیات...</p>
+                </div>
+            `;
+            
+            // درخواست جزئیات
+            fetch('/get_customer_detailed_comparison', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    customer_code: customerCode,
+                    periods: periods
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayCustomerDetails(data);
+                } else {
+                    document.getElementById('modalContent').innerHTML = `
+                        <div class="alert alert-warning">
+                            خطا: ${data.error}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('modalContent').innerHTML = `
+                    <div class="alert alert-warning">
+                        خطا در دریافت اطلاعات
+                    </div>
+                `;
+            });
+        }
+
+        // نمایش جزئیات مشتری در modal
+        function displayCustomerDetails(data) {
+            document.getElementById('modalCustomerName').textContent = 
+                `${data.customer.CustomerName} (${data.customer.CustomerCode})`;
+            
+            // ایجاد تب‌های دوره
+            const periodTabs = document.getElementById('periodTabs');
+            periodTabs.innerHTML = '';
+            
+            Object.keys(data.period_analysis).forEach((periodKey, index) => {
+                const period = data.period_analysis[periodKey];
+                const tab = document.createElement('button');
+                tab.className = `period-tab ${index === 0 ? 'active' : ''}`;
+                tab.textContent = period.period_description;
+                tab.onclick = () => showPeriodContent(periodKey, data.period_analysis, data.not_purchased_products);
+                periodTabs.appendChild(tab);
+            });
+            
+            // نمایش محتوای اولین دوره
+            const firstPeriodKey = Object.keys(data.period_analysis)[0];
+            showPeriodContent(firstPeriodKey, data.period_analysis, data.not_purchased_products);
+        }
+
+        // نمایش محتوای دوره
+        function showPeriodContent(activePeriodKey, periodAnalysis, notPurchasedProducts) {
+            // تغییر تب فعال
+            document.querySelectorAll('.period-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            const period = periodAnalysis[activePeriodKey];
+            const modalContent = document.getElementById('modalContent');
+            
+            let content = `
+                <div class="alert alert-info">
+                    <strong>${period.period_description}</strong><br>
+                    مجموع خرید: ${period.period_total.toLocaleString()} ریال | 
+                    تعداد محصولات منحصر به فرد: ${period.unique_products_count}
+                </div>
+                
+                <h4>محصولات خریداری شده</h4>
+            `;
+            
+            if (period.purchased_products.length > 0) {
+                content += '<div class="products-grid">';
+                
+                period.purchased_products.forEach(product => {
+                    content += `
+                        <div class="product-card purchased">
+                            <h5>${product.product_name}</h5>
+                            <div class="product-info">کد: ${product.product_code}</div>
+                            <div class="product-info">برند: ${product.brand}</div>
+                            <div class="product-info">دسته: ${product.category}</div>
+                            <div class="product-sales">
+                                <strong>فروش: ${product.total_amount.toLocaleString()} ریال</strong><br>
+                                تعداد: ${product.total_quantity}<br>
+                                تعداد خرید: ${product.purchase_dates.length} بار
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content += '</div>';
+            } else {
+                content += '<p style="color: #666; text-align: center; padding: 20px;">هیچ محصولی در این دوره خریداری نشده</p>';
+            }
+
+            // نمایش محصولات خریداری نشده
+            content += `
+                <hr style="margin: 30px 0;">
+                <h4>محصولات خریداری نشده</h4>
+            `;
+            
+            if (notPurchasedProducts.length > 0) {
+                content += '<div class="products-grid">';
+                
+                notPurchasedProducts.slice(0, 20).forEach(product => {
+                    content += `
+                        <div class="product-card not-purchased">
+                            <h5>${product.product_name}</h5>
+                            <div class="product-info">کد: ${product.product_code}</div>
+                            <div class="product-info">برند: ${product.brand}</div>
+                            <div class="product-info">دسته: ${product.category}</div>
+                            <div class="product-sales">
+                                قیمت: ${product.price.toLocaleString()} ریال
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                content += '</div>';
+                
+                if (notPurchasedProducts.length > 20) {
+                    content += `<p style="text-align: center; color: #666; margin-top: 15px;">
+                        و ${notPurchasedProducts.length - 20} محصول دیگر...
+                    </p>`;
+                }
+            } else {
+                content += '<p style="color: #666; text-align: center; padding: 20px;">همه محصولات خریداری شده</p>';
+            }
+            
+            modalContent.innerHTML = content;
+        }
+
+        // بستن modal
+        document.getElementById('closeModal').addEventListener('click', function() {
+            document.getElementById('customerModal').style.display = 'none';
+        });
+
+        // بستن modal با کلیک خارج از آن
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('customerModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // انتخاب پیش‌فرض ماه جاری
+        document.addEventListener('DOMContentLoaded', function() {
+            // انتخاب ماه جاری به عنوان پیش‌فرض
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1; // ماه میلادی
+            let approximateJalaliMonth;
+            
+            // تبدیل تقریبی ماه میلادی به شمسی
+            if (currentMonth >= 3 && currentMonth <= 5) {
+                approximateJalaliMonth = currentMonth; // بهار
+            } else if (currentMonth >= 6 && currentMonth <= 8) {
+                approximateJalaliMonth = currentMonth - 3; // تابستان
+            } else if (currentMonth >= 9 && currentMonth <= 11) {
+                approximateJalaliMonth = currentMonth - 2; // پاییز
+            } else {
+                approximateJalaliMonth = currentMonth >= 12 ? 10 : currentMonth + 9; // زمستان
+            }
+            
+            const firstPeriod = document.querySelector('.period-item');
+            const monthCheckbox = firstPeriod.querySelector(`[data-month="${approximateJalaliMonth}"]`);
+            
+            if (monthCheckbox) {
+                const input = monthCheckbox.querySelector('input');
+                input.checked = true;
+                monthCheckbox.classList.add('selected');
+            }
+        });
+    </script>
+</body>
+</html>

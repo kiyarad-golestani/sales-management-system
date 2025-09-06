@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت ترتیب برندها</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+            border: 1px solid #667eea;
+        }
+        
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .welcome-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .brand-list {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .brand-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border: 2px solid #e1e1e1;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .brand-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .brand-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .brand-name {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .brand-order {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+        
+        .drag-handle {
+            color: #999;
+            cursor: move;
+            font-size: 18px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+        
+        .btn-primary {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        
+        .alert {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .status-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>مدیریت ترتیب برندها</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('brand_report') }}">گزارش برندی</a>
+                <a href="{{ url_for('index') }}">داشبورد</a>
+                <a href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+        
+        <div class="welcome-header">
+            <h2>تنظیم ترتیب نمایش برندها</h2>
+            <p>برندها را با کشیدن و رها کردن مرتب کنید</p>
+        </div>
+        
+        <div id="alertContainer"></div>
+        
+        <div class="status-info" id="statusInfo">
+            <p><strong>📋 وضعیت:</strong> در حال بارگذاری...</p>
+        </div>
+        
+        <div class="loading" id="loading">
+            <h3>در حال بارگذاری ترتیب فعلی...</h3>
+        </div>
+        
+        <div class="brand-list" id="brandList" style="display: none;">
+            <!-- برندها اینجا نمایش داده می‌شوند -->
+        </div>
+        
+        <div class="controls" id="controls" style="display: none;">
+            <button class="btn btn-primary" onclick="saveBrandOrder()">
+                💾 ذخیره ترتیب جدید
+            </button>
+            <button class="btn btn-warning" onclick="resetToAlphabetical()">
+                🔤 بازنشانی به ترتیب الفبایی
+            </button>
+            <button class="btn btn-secondary" onclick="loadCurrentOrder()">
+                🔄 بارگذاری مجدد
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentBrandOrder = [];
+        let hasCustomOrder = false;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentOrder();
+        });
+        
+        function loadCurrentOrder() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('brandList').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
+            
+            fetch('/get_current_brand_order')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showAlert('خطا در بارگذاری: ' + data.error, 'error');
+                        return;
+                    }
+                    
+                    currentBrandOrder = data.current_order;
+                    hasCustomOrder = data.has_custom_order;
+                    
+                    updateStatusInfo();
+                    displayBrandList();
+                    
+                    document.getElementById('brandList').style.display = 'block';
+                    document.getElementById('controls').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showAlert('خطا در ارتباط با سرور', 'error');
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+        
+        function updateStatusInfo() {
+            const statusInfo = document.getElementById('statusInfo');
+            const statusText = hasCustomOrder ? 
+                'ترتیب سفارشی فعال است (بر اساس شیت brand)' : 
+                'ترتیب الفبایی فعال است';
+            
+            statusInfo.innerHTML = `<p><strong>📋 وضعیت:</strong> ${statusText}</p>`;
+        }
+        
+        function displayBrandList() {
+            const brandList = document.getElementById('brandList');
+            brandList.innerHTML = '';
+            
+            currentBrandOrder.forEach((brand, index) => {
+                const brandItem = document.createElement('div');
+                brandItem.className = 'brand-item';
+                brandItem.draggable = true;
+                brandItem.dataset.brand = brand;
+                
+                brandItem.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="drag-handle">⋮⋮</div>
+                        <div class="brand-name">${brand}</div>
+                    </div>
+                    <div class="brand-order">${index + 1}</div>
+                `;
+                
+                // رویدادهای drag and drop
+                brandItem.addEventListener('dragstart', handleDragStart);
+                brandItem.addEventListener('dragover', handleDragOver);
+                brandItem.addEventListener('drop', handleDrop);
+                brandItem.addEventListener('dragend', handleDragEnd);
+                
+                brandList.appendChild(brandItem);
+            });
+            
+            console.log('📋 Brand list displayed:', currentBrandOrder);
+        }
+        
+        let draggedElement = null;
+        
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            
+            if (draggedElement !== this) {
+                const draggedBrand = draggedElement.dataset.brand;
+                const targetBrand = this.dataset.brand;
+                
+                const draggedIndex = currentBrandOrder.indexOf(draggedBrand);
+                const targetIndex = currentBrandOrder.indexOf(targetBrand);
+                
+                // حرکت در آرایه
+                currentBrandOrder.splice(draggedIndex, 1);
+                currentBrandOrder.splice(targetIndex, 0, draggedBrand);
+                
+                // به‌روزرسانی نمایش
+                displayBrandList();
+                
+                console.log('🔄 Order changed:', currentBrandOrder);
+            }
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            draggedElement = null;
+        }
+        
+        function saveBrandOrder() {
+            if (currentBrandOrder.length === 0) {
+                showAlert('هیچ برندی برای ذخیره وجود ندارد', 'error');
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'در حال ذخیره...';
+            button.disabled = true;
+            
+            fetch('/update_brand_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    brand_order: currentBrandOrder
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert('خطا در ذخیره: ' + data.error, 'error');
+                } else {
+                    showAlert(data.message, 'success');
+                    hasCustomOrder = true;
+                    updateStatusInfo();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('خطا در ارتباط با سرور', 'error');
+            })
+            .finally(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            });
+        }
+        
+        function resetToAlphabetical() {
+            if (!confirm('آیا مطمئن هستید که می‌خواهید ترتیب را به حالت الفبایی بازنشانی کنید؟')) {
+                return;
+            }
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'در حال بازنشانی...';
+            button.disabled = true;
+            
+            fetch('/reset_brand_order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert('خطا در بازنشانی: ' + data.error, 'error');
+                } else {
+                    showAlert(data.message, 'success');
+                    currentBrandOrder = data.new_order;
+                    hasCustomOrder = false;
+                    updateStatusInfo();
+                    displayBrandList();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('خطا در ارتباط با سرور', 'error');
+            })
+            .finally(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            });
+        }
+        
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+            
+            // حذف خودکار پیام بعد از 5 ثانیه
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
