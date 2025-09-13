@@ -7,6 +7,10 @@ import requests
 import json
 import numpy as np
 
+import openpyxl
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from datetime import timedelta
+
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-2024'
 
@@ -4782,7 +4786,853 @@ def get_customer_detailed_comparison():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+# اضافه کردن این کدها به فایل app.py
+
+
+# فایل‌های مربوط به تورهای ویزیت
+VISIT_PERIODS_FILE = 'visit_periods.xlsx'
+VISIT_TOURS_FILE = 'visit_tours.xlsx'
+VISIT_EXECUTIONS_FILE = 'visit_executions.xlsx'
+
+def create_visit_files_if_not_exist():
+    """ایجاد فایل‌های مربوط به تورهای ویزیت در صورت عدم وجود"""
+    try:
+        # فایل دوره‌های ویزیت
+        if not os.path.exists(VISIT_PERIODS_FILE):
+            periods_df = pd.DataFrame(columns=[
+                'PeriodCode', 'PeriodName', 'StartDate', 'EndDate', 
+                'TotalTours', 'CreatedDate', 'CreatedBy', 'Status'
+            ])
+            periods_df.to_excel(VISIT_PERIODS_FILE, sheet_name='periods', index=False)
+            print("✅ فایل دوره‌های ویزیت ایجاد شد")
+        
+        # فایل تورهای ویزیت
+        if not os.path.exists(VISIT_TOURS_FILE):
+            tours_df = pd.DataFrame(columns=[
+                'TourCode', 'PeriodCode', 'TourNumber', 'TourDate', 
+                'BazaryabCode', 'CustomerCodes', 'PrintedDate', 
+                'ReceivedDate', 'Status', 'Notes'
+            ])
+            tours_df.to_excel(VISIT_TOURS_FILE, sheet_name='tours', index=False)
+            print("✅ فایل تورهای ویزیت ایجاد شد")
+        
+        # فایل اجرای تورها
+        if not os.path.exists(VISIT_EXECUTIONS_FILE):
+            executions_df = pd.DataFrame(columns=[
+                'ExecutionCode', 'TourCode', 'CustomerCode', 'VisitDate', 
+                'VisitTime', 'BazaryabCode', 'Status', 'Notes'
+            ])
+            executions_df.to_excel(VISIT_EXECUTIONS_FILE, sheet_name='executions', index=False)
+            print("✅ فایل اجرای تورها ایجاد شد")
+        
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ایجاد فایل‌های ویزیت: {e}")
+        return False
+
+def load_visit_periods():
+    """بارگذاری دوره‌های ویزیت"""
+    try:
+        create_visit_files_if_not_exist()
+        df = pd.read_excel(VISIT_PERIODS_FILE, sheet_name='periods')
+        return clean_dataframe_for_json(df)
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری دوره‌های ویزیت: {e}")
+        return pd.DataFrame()
+
+def load_visit_tours():
+    """بارگذاری تورهای ویزیت"""
+    try:
+        create_visit_files_if_not_exist()
+        df = pd.read_excel(VISIT_TOURS_FILE, sheet_name='tours')
+        return clean_dataframe_for_json(df)
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری تورهای ویزیت: {e}")
+        return pd.DataFrame()
+
+def load_visit_executions():
+    """بارگذاری اجرای تورها"""
+    try:
+        create_visit_files_if_not_exist()
+        df = pd.read_excel(VISIT_EXECUTIONS_FILE, sheet_name='executions')
+        return clean_dataframe_for_json(df)
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری اجرای تورها: {e}")
+        return pd.DataFrame()
+
+def save_visit_periods(df):
+    """ذخیره دوره‌های ویزیت"""
+    try:
+        df.to_excel(VISIT_PERIODS_FILE, sheet_name='periods', index=False)
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره دوره‌های ویزیت: {e}")
+        return False
+
+def save_visit_tours(df):
+    """ذخیره تورهای ویزیت"""
+    try:
+        df.to_excel(VISIT_TOURS_FILE, sheet_name='tours', index=False)
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره تورهای ویزیت: {e}")
+        return False
+
+def save_visit_executions(df):
+    """ذخیره اجرای تورها"""
+    try:
+        df.to_excel(VISIT_EXECUTIONS_FILE, sheet_name='executions', index=False)
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره اجرای تورها: {e}")
+        return False
+
+def generate_period_code():
+    """تولید کد دوره ویزیت منحصر به فرد"""
+    try:
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        date_str = jalali_now.strftime('%Y%m%d')
+        
+        periods_df = load_visit_periods()
+        if not periods_df.empty:
+            today_periods = periods_df[periods_df['PeriodCode'].str.contains(f'VP-{date_str}', na=False)]
+            last_number = len(today_periods) + 1
+        else:
+            last_number = 1
+        
+        return f"VP-{date_str}{last_number:03d}"
+    except Exception as e:
+        print(f"❌ خطا در تولید کد دوره: {e}")
+        return f"VP-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+def generate_tour_code(period_code, tour_number):
+    """تولید کد تور ویزیت"""
+    try:
+        return f"{period_code}-T{tour_number:02d}"
+    except Exception as e:
+        print(f"❌ خطا در تولید کد تور: {e}")
+        return f"TOUR-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+# Routes مربوط به مدیریت تورهای ویزیت
+
+@app.route('/visit_management')
+def visit_management():
+    """صفحه مدیریت تورهای ویزیت - فقط برای ادمین"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     
+    if session['user_info']['Typev'] != 'admin':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    create_visit_files_if_not_exist()
+    return render_template('visit_management.html', user=session['user_info'])
+
+@app.route('/create_visit_period', methods=['POST'])
+def create_visit_period():
+    """ایجاد دوره ویزیت جدید"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        data = request.get_json()
+        period_name = data.get('period_name', '').strip()
+        start_date = data.get('start_date', '').strip()
+        end_date = data.get('end_date', '').strip()
+        total_tours = int(data.get('total_tours', 4))
+        
+        if not period_name or not start_date or not end_date:
+            return jsonify({'error': 'نام دوره و تاریخ‌ها الزامی است'}), 400
+        
+        # تولید کد دوره
+        period_code = generate_period_code()
+        
+        # تاریخ و ساعت فعلی
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        created_date = jalali_now.strftime('%Y/%m/%d')
+        
+        # بارگذاری دوره‌های موجود
+        periods_df = load_visit_periods()
+        
+        # ایجاد رکورد جدید
+        new_period = pd.DataFrame([{
+            'PeriodCode': period_code,
+            'PeriodName': period_name,
+            'StartDate': start_date,
+            'EndDate': end_date,
+            'TotalTours': total_tours,
+            'CreatedDate': created_date,
+            'CreatedBy': session['user_info']['Codev'],
+            'Status': 'فعال'
+        }])
+        
+        # اضافه کردن به DataFrame موجود
+        if periods_df.empty:
+            periods_df = new_period
+        else:
+            periods_df = pd.concat([periods_df, new_period], ignore_index=True)
+        
+        # ذخیره فایل
+        if save_visit_periods(periods_df):
+            print(f"✅ دوره ویزیت ایجاد شد: {period_code}")
+            return jsonify({
+                'success': True,
+                'period_code': period_code,
+                'message': 'دوره ویزیت با موفقیت ایجاد شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره دوره ویزیت'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ایجاد دوره ویزیت: {e}")
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/get_visit_periods')
+def get_visit_periods():
+    """دریافت لیست دوره‌های ویزیت"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        periods_df = load_visit_periods()
+        
+        if periods_df.empty:
+            return jsonify({'periods': []})
+        
+        # مرتب‌سازی بر اساس تاریخ (جدیدترین اول)
+        periods_df = periods_df.sort_values('CreatedDate', ascending=False)
+        
+        periods = []
+        for _, period in periods_df.iterrows():
+            periods.append({
+                'period_code': period.get('PeriodCode', ''),
+                'period_name': period.get('PeriodName', ''),
+                'start_date': period.get('StartDate', ''),
+                'end_date': period.get('EndDate', ''),
+                'total_tours': int(period.get('TotalTours', 0)),
+                'created_date': period.get('CreatedDate', ''),
+                'status': period.get('Status', 'فعال')
+            })
+        
+        return jsonify({'periods': periods})
+        
+    except Exception as e:
+        print(f"❌ خطا در دریافت دوره‌های ویزیت: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/create_tours_for_period', methods=['POST'])
+def create_tours_for_period():
+    """ایجاد تورهای ویزیت برای یک دوره"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        data = request.get_json()
+        period_code = data.get('period_code', '').strip()
+        bazaryab_code = data.get('bazaryab_code', '').strip()
+        
+        if not period_code or not bazaryab_code:
+            return jsonify({'error': 'کد دوره و بازاریاب الزامی است'}), 400
+        
+        # بارگذاری اطلاعات دوره
+        periods_df = load_visit_periods()
+        period_info = periods_df[periods_df['PeriodCode'] == period_code]
+        
+        if period_info.empty:
+            return jsonify({'error': 'دوره یافت نشد'}), 404
+        
+        period_detail = period_info.iloc[0]
+        total_tours = int(period_detail['TotalTours'])
+        start_date = period_detail['StartDate']
+        end_date = period_detail['EndDate']
+        
+        # بارگذاری مشتریان این بازاریاب
+        customers_df = load_customers_from_excel()
+        bazaryab_customers = customers_df[customers_df['BazaryabCode'] == bazaryab_code]
+        
+        if bazaryab_customers.empty:
+            return jsonify({'error': 'هیچ مشتری برای این بازاریاب یافت نشد'}), 404
+        
+        # تقسیم مشتریان به تورها (حداکثر 20 مشتری در هر تور)
+        customer_codes = bazaryab_customers['CustomerCode'].tolist()
+        customers_per_tour = 20
+        
+        # بارگذاری تورهای موجود
+        tours_df = load_visit_tours()
+        
+        # ایجاد تورها
+        new_tours = []
+        for tour_num in range(1, total_tours + 1):
+            # تعیین مشتریان این تور
+            start_idx = (tour_num - 1) * customers_per_tour
+            end_idx = start_idx + customers_per_tour
+            tour_customers = customer_codes[start_idx:end_idx]
+            
+            if not tour_customers:  # اگر مشتری نداریم، توقف
+                break
+            
+            tour_code = generate_tour_code(period_code, tour_num)
+            
+            # محاسبه تاریخ تور (توزیع در طول دوره)
+            start_dt = datetime.strptime(start_date, '%Y/%m/%d') if '/' in start_date else datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y/%m/%d') if '/' in end_date else datetime.strptime(end_date, '%Y-%m-%d')
+            
+            days_diff = (end_dt - start_dt).days
+            tour_day = start_dt + timedelta(days=(days_diff * (tour_num - 1) // max(1, total_tours - 1)))
+            tour_date = tour_day.strftime('%Y/%m/%d')
+            
+            new_tour = {
+                'TourCode': tour_code,
+                'PeriodCode': period_code,
+                'TourNumber': tour_num,
+                'TourDate': tour_date,
+                'BazaryabCode': bazaryab_code,
+                'CustomerCodes': ','.join(tour_customers),
+                'PrintedDate': '',
+                'ReceivedDate': '',
+                'Status': 'تعریف شده',
+                'Notes': f'تور {tour_num} از {total_tours} - {len(tour_customers)} مشتری'
+            }
+            
+            new_tours.append(new_tour)
+        
+        # اضافه کردن تورهای جدید
+        if new_tours:
+            new_tours_df = pd.DataFrame(new_tours)
+            if tours_df.empty:
+                tours_df = new_tours_df
+            else:
+                tours_df = pd.concat([tours_df, new_tours_df], ignore_index=True)
+            
+            # ذخیره فایل
+            if save_visit_tours(tours_df):
+                print(f"✅ {len(new_tours)} تور برای دوره {period_code} ایجاد شد")
+                return jsonify({
+                    'success': True,
+                    'created_tours': len(new_tours),
+                    'message': f'{len(new_tours)} تور ویزیت با موفقیت ایجاد شد'
+                })
+            else:
+                return jsonify({'error': 'خطا در ذخیره تورها'}), 500
+        else:
+            return jsonify({'error': 'هیچ توری ایجاد نشد'}), 400
+            
+    except Exception as e:
+        print(f"❌ خطا در ایجاد تورها: {e}")
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+@app.route('/print_tour_list/<tour_code>')
+def print_tour_list(tour_code):
+    """چاپ لیست مشتریان یک تور"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session['user_info']['Typev'] != 'admin':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        # بارگذاری اطلاعات تور
+        tours_df = load_visit_tours()
+        tour_info = tours_df[tours_df['TourCode'] == tour_code]
+        
+        if tour_info.empty:
+            flash('تور یافت نشد!', 'error')
+            return redirect(url_for('visit_management'))
+        
+        tour_detail = tour_info.iloc[0].to_dict()
+        
+        # بارگذاری اطلاعات مشتریان
+        customers_df = load_customers_from_excel()
+        customer_codes = tour_detail['CustomerCodes'].split(',')
+        
+        tour_customers = []
+        for customer_code in customer_codes:
+            customer = customers_df[customers_df['CustomerCode'] == customer_code.strip()]
+            if not customer.empty:
+                tour_customers.append(customer.iloc[0].to_dict())
+        
+        # بارگذاری اطلاعات بازاریاب
+        users_df = load_users_from_excel()
+        bazaryab_info = users_df[users_df['Codev'] == tour_detail['BazaryabCode']]
+        bazaryab_name = bazaryab_info.iloc[0]['Namev'] if not bazaryab_info.empty else 'نامشخص'
+        
+        # به‌روزرسانی تاریخ چاپ
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        printed_date = jalali_now.strftime('%Y/%m/%d %H:%M')
+        
+        tours_df.loc[tours_df['TourCode'] == tour_code, 'PrintedDate'] = printed_date
+        tours_df.loc[tours_df['TourCode'] == tour_code, 'Status'] = 'چاپ شده'
+        save_visit_tours(tours_df)
+        
+        return render_template('tour_print.html', 
+                             tour=tour_detail,
+                             customers=tour_customers,
+                             bazaryab_name=bazaryab_name,
+                             printed_date=printed_date,
+                             user=session['user_info'])
+        
+    except Exception as e:
+        print(f"❌ خطا در چاپ تور: {e}")
+        flash('خطا در بارگذاری اطلاعات تور!', 'error')
+        return redirect(url_for('visit_management'))    
+
+# اضافه کردن این Route ها به فایل app.py
+
+@app.route('/get_visit_tours')
+def get_visit_tours():
+    """دریافت لیست تورهای ویزیت"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        tours_df = load_visit_tours()
+        
+        if tours_df.empty:
+            return jsonify({'tours': []})
+        
+        # بارگذاری اطلاعات تکمیلی
+        users_df = load_users_from_excel()
+        periods_df = load_visit_periods()
+        
+        tours = []
+        for _, tour in tours_df.iterrows():
+            # نام بازاریاب
+            bazaryab_info = users_df[users_df['Codev'] == tour.get('BazaryabCode', '')]
+            bazaryab_name = bazaryab_info.iloc[0]['Namev'] if not bazaryab_info.empty else 'نامشخص'
+            
+            # نام دوره
+            period_info = periods_df[periods_df['PeriodCode'] == tour.get('PeriodCode', '')]
+            period_name = period_info.iloc[0]['PeriodName'] if not period_info.empty else 'نامشخص'
+            
+            # تعداد مشتریان
+            customer_codes = tour.get('CustomerCodes', '').split(',')
+            customer_count = len([c for c in customer_codes if c.strip()])
+            
+            tours.append({
+                'tour_code': tour.get('TourCode', ''),
+                'period_code': tour.get('PeriodCode', ''),
+                'period_name': period_name,
+                'tour_number': int(tour.get('TourNumber', 0)),
+                'tour_date': tour.get('TourDate', ''),
+                'bazaryab_code': tour.get('BazaryabCode', ''),
+                'bazaryab_name': bazaryab_name,
+                'customer_count': customer_count,
+                'printed_date': tour.get('PrintedDate', ''),
+                'received_date': tour.get('ReceivedDate', ''),
+                'status': tour.get('Status', 'تعریف شده'),
+                'notes': tour.get('Notes', '')
+            })
+        
+        # مرتب‌سازی بر اساس تاریخ تور
+        tours.sort(key=lambda x: x['tour_date'], reverse=True)
+        
+        return jsonify({'tours': tours})
+        
+    except Exception as e:
+        print(f"❌ خطا در دریافت تورها: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/mark_tour_received', methods=['POST'])
+def mark_tour_received():
+    """علامت‌گذاری تور به عنوان تحویل داده شده"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        data = request.get_json()
+        tour_code = data.get('tour_code', '').strip()
+        
+        if not tour_code:
+            return jsonify({'error': 'کد تور الزامی است'}), 400
+        
+        # بارگذاری تورها
+        tours_df = load_visit_tours()
+        
+        # پیدا کردن تور
+        tour_index = tours_df[tours_df['TourCode'] == tour_code].index
+        
+        if tour_index.empty:
+            return jsonify({'error': 'تور یافت نشد'}), 404
+        
+        # به‌روزرسانی وضعیت
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        received_date = jalali_now.strftime('%Y/%m/%d %H:%M')
+        
+        tours_df.loc[tour_index, 'ReceivedDate'] = received_date
+        tours_df.loc[tour_index, 'Status'] = 'تحویل داده شده'
+        
+        # ذخیره
+        if save_visit_tours(tours_df):
+            return jsonify({
+                'success': True,
+                'message': 'تور با موفقیت به عنوان تحویل داده شده ثبت شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره اطلاعات'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ثبت تحویل تور: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_tour_customers/<tour_code>')
+def get_tour_customers(tour_code):
+    """دریافت لیست مشتریان یک تور برای ثبت ویزیت"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        # بارگذاری اطلاعات تور
+        tours_df = load_visit_tours()
+        tour_info = tours_df[tours_df['TourCode'] == tour_code]
+        
+        if tour_info.empty:
+            return jsonify({'error': 'تور یافت نشد'}), 404
+        
+        tour_detail = tour_info.iloc[0]
+        
+        # بررسی دسترسی (ادمین یا خود بازاریاب)
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        if user_type != 'admin' and tour_detail['BazaryabCode'] != user_code:
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # بارگذاری مشتریان
+        customers_df = load_customers_from_excel()
+        customer_codes = tour_detail['CustomerCodes'].split(',')
+        
+        tour_customers = []
+        for customer_code in customer_codes:
+            customer_code = customer_code.strip()
+            if customer_code:
+                customer = customers_df[customers_df['CustomerCode'] == customer_code]
+                if not customer.empty:
+                    tour_customers.append({
+                        'customer_code': customer_code,
+                        'customer_name': customer.iloc[0]['CustomerName']
+                    })
+        
+        # بارگذاری ویزیت‌های قبلی این تور
+        executions_df = load_visit_executions()
+        existing_visits = executions_df[executions_df['TourCode'] == tour_code]
+        visited_customers = existing_visits['CustomerCode'].tolist() if not existing_visits.empty else []
+        
+        return jsonify({
+            'success': True,
+            'tour_code': tour_code,
+            'tour_info': tour_detail.to_dict(),
+            'customers': tour_customers,
+            'visited_customers': visited_customers
+        })
+        
+    except Exception as e:
+        print(f"❌ خطا در دریافت مشتریان تور: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/submit_tour_execution', methods=['POST'])
+def submit_tour_execution():
+    """ثبت ویزیت‌های انجام شده در یک تور"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        data = request.get_json()
+        tour_code = data.get('tour_code', '').strip()
+        visited_customers = data.get('visited_customers', [])
+        
+        if not tour_code or not visited_customers:
+            return jsonify({'error': 'اطلاعات ناقص است'}), 400
+        
+        # بررسی دسترسی به تور
+        tours_df = load_visit_tours()
+        tour_info = tours_df[tours_df['TourCode'] == tour_code]
+        
+        if tour_info.empty:
+            return jsonify({'error': 'تور یافت نشد'}), 404
+        
+        tour_detail = tour_info.iloc[0]
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        if user_type != 'admin' and tour_detail['BazaryabCode'] != user_code:
+            return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+        
+        # بارگذاری ویزیت‌های موجود
+        executions_df = load_visit_executions()
+        
+        # حذف ویزیت‌های قبلی این تور
+        executions_df = executions_df[executions_df['TourCode'] != tour_code]
+        
+        # اضافه کردن ویزیت‌های جدید
+        new_executions = []
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        visit_date = jalali_now.strftime('%Y/%m/%d')
+        visit_time = now.strftime('%H:%M')
+        
+        for customer_code in visited_customers:
+            execution_code = f"EX-{tour_code}-{customer_code}-{now.strftime('%H%M%S')}"
+            
+            new_execution = {
+                'ExecutionCode': execution_code,
+                'TourCode': tour_code,
+                'CustomerCode': customer_code,
+                'VisitDate': visit_date,
+                'VisitTime': visit_time,
+                'BazaryabCode': tour_detail['BazaryabCode'],
+                'Status': 'انجام شده',
+                'Notes': f'ویزیت در تور {tour_code}'
+            }
+            
+            new_executions.append(new_execution)
+        
+        # اضافه کردن به DataFrame
+        if new_executions:
+            new_executions_df = pd.DataFrame(new_executions)
+            if executions_df.empty:
+                executions_df = new_executions_df
+            else:
+                executions_df = pd.concat([executions_df, new_executions_df], ignore_index=True)
+        
+        # ذخیره
+        if save_visit_executions(executions_df):
+            # به‌روزرسانی وضعیت تور
+            tours_df.loc[tours_df['TourCode'] == tour_code, 'Status'] = 'در حال اجرا'
+            save_visit_tours(tours_df)
+            
+            return jsonify({
+                'success': True,
+                'message': f'{len(visited_customers)} ویزیت با موفقیت ثبت شد'
+            })
+        else:
+            return jsonify({'error': 'خطا در ذخیره ویزیت‌ها'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ثبت ویزیت‌ها: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get_visit_report', methods=['POST'])
+def get_visit_report():
+    """تولید گزارش ویزیت‌های انجام شده"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'admin':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        data = request.get_json()
+        period_code = data.get('period_code', '').strip()
+        bazaryab_code = data.get('bazaryab_code', '').strip()
+        
+        if not period_code:
+            return jsonify({'error': 'کد دوره الزامی است'}), 400
+        
+        # بارگذاری اطلاعات
+        periods_df = load_visit_periods()
+        tours_df = load_visit_tours()
+        executions_df = load_visit_executions()
+        customers_df = load_customers_from_excel()
+        users_df = load_users_from_excel()
+        
+        # اطلاعات دوره
+        period_info = periods_df[periods_df['PeriodCode'] == period_code]
+        if period_info.empty:
+            return jsonify({'error': 'دوره یافت نشد'}), 404
+        
+        period_detail = period_info.iloc[0]
+        
+        # فیلتر تورهای این دوره
+        period_tours = tours_df[tours_df['PeriodCode'] == period_code]
+        
+        # فیلتر بر اساس بازاریاب اگر انتخاب شده
+        if bazaryab_code:
+            period_tours = period_tours[period_tours['BazaryabCode'] == bazaryab_code]
+        
+        if period_tours.empty:
+            return jsonify({
+                'success': True,
+                'period_info': period_detail.to_dict(),
+                'report_data': [],
+                'summary': {
+                    'total_tours': 0,
+                    'total_customers': 0,
+                    'visited_customers': 0,
+                    'visit_percentage': 0
+                }
+            })
+        
+        # تحلیل هر تور
+        report_data = []
+        total_customers = 0
+        total_visited = 0
+        
+        for _, tour in period_tours.iterrows():
+            tour_code = tour['TourCode']
+            bazaryab_code_tour = tour['BazaryabCode']
+            
+            # نام بازاریاب
+            bazaryab_info = users_df[users_df['Codev'] == bazaryab_code_tour]
+            bazaryab_name = bazaryab_info.iloc[0]['Namev'] if not bazaryab_info.empty else 'نامشخص'
+            
+            # مشتریان تور
+            customer_codes = tour['CustomerCodes'].split(',')
+            tour_customers = []
+            
+            for customer_code in customer_codes:
+                customer_code = customer_code.strip()
+                if customer_code:
+                    customer_info = customers_df[customers_df['CustomerCode'] == customer_code]
+                    if not customer_info.empty:
+                        customer_name = customer_info.iloc[0]['CustomerName']
+                        
+                        # بررسی ویزیت
+                        visit_executed = not executions_df[
+                            (executions_df['TourCode'] == tour_code) & 
+                            (executions_df['CustomerCode'] == customer_code)
+                        ].empty
+                        
+                        tour_customers.append({
+                            'customer_code': customer_code,
+                            'customer_name': customer_name,
+                            'visited': visit_executed
+                        })
+                        
+                        total_customers += 1
+                        if visit_executed:
+                            total_visited += 1
+            
+            # آمار تور
+            tour_total = len(tour_customers)
+            tour_visited = len([c for c in tour_customers if c['visited']])
+            tour_percentage = (tour_visited / tour_total * 100) if tour_total > 0 else 0
+            
+            report_data.append({
+                'tour_code': tour_code,
+                'tour_number': int(tour['TourNumber']),
+                'tour_date': tour['TourDate'],
+                'bazaryab_name': bazaryab_name,
+                'customers': tour_customers,
+                'total_customers': tour_total,
+                'visited_customers': tour_visited,
+                'visit_percentage': round(tour_percentage, 1),
+                'status': tour['Status']
+            })
+        
+        # آمار کلی
+        overall_percentage = (total_visited / total_customers * 100) if total_customers > 0 else 0
+        
+        summary = {
+            'total_tours': len(report_data),
+            'total_customers': total_customers,
+            'visited_customers': total_visited,
+            'visit_percentage': round(overall_percentage, 1)
+        }
+        
+        return jsonify({
+            'success': True,
+            'period_info': period_detail.to_dict(),
+            'report_data': report_data,
+            'summary': summary
+        })
+        
+    except Exception as e:
+        print(f"❌ خطا در تولید گزارش: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Route برای صفحه ثبت ویزیت توسط بازاریاب
+@app.route('/my_visit_tours')
+def my_visit_tours():
+    """صفحه تورهای ویزیت من - برای بازاریابان"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session['user_info']['Typev'] != 'user':
+        flash('شما اجازه دسترسی به این صفحه را ندارید!', 'error')
+        return redirect(url_for('index'))
+    
+    return render_template('my_visit_tours.html', user=session['user_info'])
+
+@app.route('/get_my_tours')
+def get_my_tours():
+    """دریافت تورهای ویزیت بازاریاب"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
+    
+    if session['user_info']['Typev'] != 'user':
+        return jsonify({'error': 'دسترسی غیرمجاز'}), 403
+    
+    try:
+        bazaryab_code = session['user_info']['Codev']
+        
+        # بارگذاری تورهای این بازاریاب
+        tours_df = load_visit_tours()
+        my_tours = tours_df[tours_df['BazaryabCode'] == bazaryab_code]
+        
+        if my_tours.empty:
+            return jsonify({'tours': []})
+        
+        # بارگذاری اطلاعات تکمیلی
+        periods_df = load_visit_periods()
+        executions_df = load_visit_executions()
+        
+        tours = []
+        for _, tour in my_tours.iterrows():
+            tour_code = tour['TourCode']
+            
+            # اطلاعات دوره
+            period_info = periods_df[periods_df['PeriodCode'] == tour['PeriodCode']]
+            period_name = period_info.iloc[0]['PeriodName'] if not period_info.empty else 'نامشخص'
+            
+            # تعداد مشتریان و ویزیت‌های انجام شده
+            customer_codes = tour['CustomerCodes'].split(',')
+            total_customers = len([c for c in customer_codes if c.strip()])
+            
+            executed_visits = executions_df[executions_df['TourCode'] == tour_code]
+            visited_customers = len(executed_visits)
+            
+            tours.append({
+                'tour_code': tour_code,
+                'period_name': period_name,
+                'tour_number': int(tour['TourNumber']),
+                'tour_date': tour['TourDate'],
+                'total_customers': total_customers,
+                'visited_customers': visited_customers,
+                'completion_percentage': round((visited_customers / total_customers * 100), 1) if total_customers > 0 else 0,
+                'status': tour['Status'],
+                'printed_date': tour.get('PrintedDate', ''),
+                'received_date': tour.get('ReceivedDate', '')
+            })
+        
+        # مرتب‌سازی بر اساس تاریخ
+        tours.sort(key=lambda x: x['tour_date'], reverse=True)
+        
+        return jsonify({'tours': tours})
+        
+    except Exception as e:
+        print(f"❌ خطا در دریافت تورهای بازاریاب: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # اضافه کردن requests به requirements اگر نداری
 # pip install requests
 # ===============================
