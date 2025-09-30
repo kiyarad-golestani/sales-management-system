@@ -198,35 +198,128 @@
             to { transform: rotate(360deg); }
         }
         
+        /* Toast Notifications - پیام‌های شناور */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .toast {
+            background: white;
+            padding: 16px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            border-right: 4px solid;
+            min-width: 300px;
+        }
+        
+        .toast.removing {
+            animation: slideOut 0.3s ease-in forwards;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+        }
+        
+        .toast-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .toast-content {
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .toast-close:hover {
+            background: rgba(0,0,0,0.1);
+            color: #666;
+        }
+        
+        .toast-success {
+            border-right-color: #28a745;
+            background: linear-gradient(to left, #d4edda, white);
+        }
+        
+        .toast-success .toast-icon {
+            color: #28a745;
+        }
+        
+        .toast-error {
+            border-right-color: #dc3545;
+            background: linear-gradient(to left, #f8d7da, white);
+        }
+        
+        .toast-error .toast-icon {
+            color: #dc3545;
+        }
+        
+        .toast-info {
+            border-right-color: #17a2b8;
+            background: linear-gradient(to left, #d1ecf1, white);
+        }
+        
+        .toast-info .toast-icon {
+            color: #17a2b8;
+        }
+        
+        .toast-warning {
+            border-right-color: #ffc107;
+            background: linear-gradient(to left, #fff3cd, white);
+        }
+        
+        .toast-warning .toast-icon {
+            color: #ffc107;
+        }
+        
+        /* Alert قدیمی را مخفی می‌کنیم */
         .alert {
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .alert-warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            display: none;
         }
         
         .info-card {
@@ -263,6 +356,16 @@
             .action-buttons {
                 flex-direction: column;
             }
+            
+            .toast-container {
+                left: 10px;
+                right: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            .toast {
+                min-width: auto;
+            }
         }
     </style>
 </head>
@@ -280,12 +383,13 @@
             </div>
         </div>
         
-        <div id="messageArea"></div>
+        <!-- Toast Container -->
+        <div class="toast-container" id="toastContainer"></div>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    <div class="alert alert-{{ category }}" data-message="{{ message }}" data-category="{{ category }}"></div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
@@ -376,20 +480,56 @@
     </div>
 
     <script>
-        // نمایش پیام
-        function showMessage(message, type = 'info') {
-            const messageArea = document.getElementById('messageArea');
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.textContent = message;
+        // سیستم Toast Notification
+        function showToast(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toastContainer');
             
-            messageArea.appendChild(alertDiv);
+            // آیکون‌های مختلف برای انواع پیام
+            const icons = {
+                success: '✓',
+                error: '✕',
+                info: 'ℹ',
+                warning: '⚠'
+            };
             
-            // حذف پیام بعد از 5 ثانیه
+            // ساخت toast
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type] || icons.info}</div>
+                <div class="toast-content">${message}</div>
+                <button class="toast-close" onclick="removeToast(this)">×</button>
+            `;
+            
+            container.appendChild(toast);
+            
+            // حذف خودکار بعد از مدت زمان مشخص
             setTimeout(() => {
-                alertDiv.remove();
-            }, 5000);
+                removeToast(toast.querySelector('.toast-close'));
+            }, duration);
         }
+        
+        // حذف toast
+        function removeToast(button) {
+            const toast = button.closest('.toast');
+            toast.classList.add('removing');
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }
+
+        // نمایش پیام‌های Flash از سرور
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                const message = alert.getAttribute('data-message');
+                const category = alert.getAttribute('data-category');
+                if (message) {
+                    showToast(message, category);
+                }
+            });
+        });
 
         // دریافت موقعیت جغرافیایی
         function getCurrentPosition() {
@@ -438,13 +578,13 @@
                 button.classList.add('loading');
                 button.disabled = true;
                 
-                showMessage('در حال دریافت موقعیت جغرافیایی...', 'info');
+                showToast('در حال دریافت موقعیت جغرافیایی...', 'info');
                 
                 // دریافت موقعیت فعلی
                 const position = await getCurrentPosition();
                 
                 console.log('موقعیت فعلی:', position);
-                showMessage(`موقعیت دریافت شد (دقت: ${Math.round(position.accuracy)} متر)`, 'success');
+                showToast(`موقعیت دریافت شد (دقت: ${Math.round(position.accuracy)} متر)`, 'success', 3000);
                 
                 // ارسال به سرور
                 const response = await fetch('{{ url_for("record_visit") }}', {
@@ -462,22 +602,22 @@
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
-                    showMessage(data.message, 'success');
+                    showToast(data.message, 'success');
                     // رفرش صفحه بعد از 2 ثانیه
                     setTimeout(() => {
                         window.location.reload();
                     }, 2000);
                 } else {
                     if (data.too_far) {
-                        showMessage(`❌ ${data.error}`, 'warning');
+                        showToast(`⚠ ${data.error}`, 'warning', 7000);
                     } else {
-                        showMessage(data.error || 'خطا در ثبت مراجعه', 'error');
+                        showToast(data.error || 'خطا در ثبت مراجعه', 'error');
                     }
                 }
                 
             } catch (error) {
                 console.error('خطا:', error);
-                showMessage(error.message, 'error');
+                showToast(error.message, 'error');
             } finally {
                 // حذف لودینگ
                 button.classList.remove('loading');
