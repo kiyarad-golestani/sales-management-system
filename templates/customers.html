@@ -174,6 +174,30 @@
             cursor: not-allowed;
         }
         
+        .btn.loading {
+            position: relative;
+            color: transparent;
+        }
+        
+        .btn.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         .alert {
             padding: 12px;
             margin-bottom: 20px;
@@ -197,6 +221,12 @@
             background: #d1ecf1;
             color: #0c5460;
             border: 1px solid #bee5eb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
         }
         
         .info-card {
@@ -249,6 +279,8 @@
                 <a href="{{ url_for('logout') }}">خروج</a>
             </div>
         </div>
+        
+        <div id="messageArea"></div>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -309,10 +341,12 @@
                                 {% endif %}
                                 
                                 {% if customer.LocationSet %}
-                                    <form method="POST" action="{{ url_for('record_visit') }}" style="display: inline;">
-                                        <input type="hidden" name="customer_code" value="{{ customer.CustomerCode }}">
-                                        <button type="submit" class="btn btn-success">ثبت مراجعه</button>
-                                    </form>
+                                    <button type="button" 
+                                            class="btn btn-success visit-btn" 
+                                            data-customer-code="{{ customer.CustomerCode }}"
+                                            data-customer-name="{{ customer.CustomerName }}">
+                                        ثبت مراجعه
+                                    </button>
                                     <a href="{{ url_for('customer_report', customer_code=customer.CustomerCode) }}" 
                                        class="btn btn-info">گزارش مراجعه</a>
                                     <a href="{{ url_for('product_report', customer_code=customer.CustomerCode) }}" 
@@ -340,5 +374,132 @@
             </table>
         </div>
     </div>
+
+    <script>
+        // نمایش پیام
+        function showMessage(message, type = 'info') {
+            const messageArea = document.getElementById('messageArea');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.textContent = message;
+            
+            messageArea.appendChild(alertDiv);
+            
+            // حذف پیام بعد از 5 ثانیه
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // دریافت موقعیت جغرافیایی
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('مرورگر شما از موقعیت‌یابی پشتیبانی نمی‌کند'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy
+                        });
+                    },
+                    (error) => {
+                        let errorMessage = 'خطا در دریافت موقعیت جغرافیایی';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = 'لطفاً دسترسی به موقعیت جغرافیایی را فعال کنید';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = 'موقعیت جغرافیایی در دسترس نیست';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = 'زمان دریافت موقعیت به پایان رسید';
+                                break;
+                        }
+                        reject(new Error(errorMessage));
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+
+        // ثبت مراجعه
+        async function recordVisit(customerCode, customerName, button) {
+            try {
+                // نمایش لودینگ
+                button.classList.add('loading');
+                button.disabled = true;
+                
+                showMessage('در حال دریافت موقعیت جغرافیایی...', 'info');
+                
+                // دریافت موقعیت فعلی
+                const position = await getCurrentPosition();
+                
+                console.log('موقعیت فعلی:', position);
+                showMessage(`موقعیت دریافت شد (دقت: ${Math.round(position.accuracy)} متر)`, 'success');
+                
+                // ارسال به سرور
+                const response = await fetch('{{ url_for("record_visit") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        customer_code: customerCode,
+                        current_latitude: position.latitude,
+                        current_longitude: position.longitude
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showMessage(data.message, 'success');
+                    // رفرش صفحه بعد از 2 ثانیه
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    if (data.too_far) {
+                        showMessage(`❌ ${data.error}`, 'warning');
+                    } else {
+                        showMessage(data.error || 'خطا در ثبت مراجعه', 'error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('خطا:', error);
+                showMessage(error.message, 'error');
+            } finally {
+                // حذف لودینگ
+                button.classList.remove('loading');
+                button.disabled = false;
+            }
+        }
+
+        // اضافه کردن event listener به دکمه‌های ثبت مراجعه
+        document.addEventListener('DOMContentLoaded', function() {
+            const visitButtons = document.querySelectorAll('.visit-btn');
+            
+            visitButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const customerCode = this.getAttribute('data-customer-code');
+                    const customerName = this.getAttribute('data-customer-name');
+                    
+                    if (confirm(`آیا مطمئن هستید که می‌خواهید مراجعه به "${customerName}" را ثبت کنید؟\n\n⚠️ توجه: موقعیت جغرافیایی شما بررسی خواهد شد.`)) {
+                        recordVisit(customerCode, customerName, this);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
