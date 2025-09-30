@@ -10,6 +10,8 @@ import numpy as np
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from datetime import timedelta
+from math import radians, sin, cos, sqrt, atan2
+
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-2024'
@@ -20,6 +22,26 @@ CUSTOMERS_FILE = 'customers.xlsx'
 VISITS_FILE = 'visits.xlsx'
 EXAMS_FILE = 'azmon.xlsx'  # ← این خط را اضافه کنید
 
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """محاسبه فاصله بین دو نقطه جغرافیایی به متر (فرمول Haversine)"""
+    try:
+        # تبدیل به رادیان
+        lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+        
+        # فرمول Haversine
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1-a))
+        
+        # شعاع زمین به متر
+        radius = 6371000
+        distance = radius * c
+        
+        return distance
+    except Exception as e:
+        print(f"خطا در محاسبه فاصله: {e}")
+        return None
 
 # تابع کمکی برای تبدیل امن به JSON
 def safe_json_response(data):
@@ -473,43 +495,105 @@ def save_location():
 
 @app.route('/record_visit', methods=['POST'])
 def record_visit():
-    """ثبت مراجعه به مشتری"""
+    """ثبت مراجعه به مشتری با بررسی موقعیت جغرافیایی"""
     if 'user_id' not in session:
-        return redirect(url_for('login'))
+        return jsonify({'error': 'لطفاً وارد شوید'}), 401
     
-    customer_code = request.form['customer_code']
-    
-    # بارگذاری مراجعات موجود
-    visits_df = load_visits_from_excel()
-    if visits_df is None:
-        # ایجاد DataFrame جدید اگر فایل وجود نداشته باشد
-        visits_df = pd.DataFrame(columns=['VisitCode', 'BazaryabCode', 'CustomerCode', 'VisitDate', 'VisitTime'])
-    
-    # ایجاد کد مراجعه جدید
-    visit_count = len(visits_df) + 1
-    visit_code = f"V{visit_count:03d}"
-    
-    # ایجاد رکورد جدید
-    now = datetime.now()
-    new_visit = {
-        'VisitCode': visit_code,
-        'BazaryabCode': session['user_info']['Codev'],
-        'CustomerCode': customer_code,
-        'VisitDate': now.strftime('%Y-%m-%d'),
-        'VisitTime': now.strftime('%H:%M')
-    }
-    
-    # اضافه کردن به DataFrame
-    visits_df = pd.concat([visits_df, pd.DataFrame([new_visit])], ignore_index=True)
-    
-    # ذخیره فایل
-    if save_visits_to_excel(visits_df):
-        flash('مراجعه با موفقیت ثبت شد!', 'success')
-    else:
-        flash('خطا در ثبت مراجعه!', 'error')
-    
-    return redirect(url_for('customers_list'))
-
+    try:
+        # دریافت اطلاعات از request
+        data = request.get_json() if request.is_json else request.form
+        
+        customer_code = data.get('customer_code')
+        current_lat = data.get('current_latitude')
+        current_lon = data.get('current_longitude')
+        
+        if not customer_code:
+            return jsonify({'error': 'کد مشتری الزامی است'}), 400
+        
+        if not current_lat or not current_lon:
+            return jsonify({'error': 'موقعیت جغرافیایی فعلی شما دریافت نشد'}), 400
+        
+        # بارگذاری اطلاعات مشتری
+        customers_df = load_customers_from_excel()
+        if customers_df is None:
+            return jsonify({'error': 'خطا در بارگذاری اطلاعات'}), 500
+        
+        # پیدا کردن مشتری
+        customer = customers_df[customers_df['CustomerCode'] == customer_code]
+        
+        if customer.empty:
+            return jsonify({'error': 'مشتری یافت نشد'}), 404
+        
+        customer_info = customer.iloc[0]
+        
+        # بررسی اینکه آیا موقعیت مشتری ثبت شده است
+        if not customer_info.get('LocationSet') or not customer_info.get('Latitude') or not customer_info.get('Longitude'):
+            return jsonify({'error': 'موقعیت جغرافیایی این مشتری ثبت نشده است'}), 400
+        
+        customer_lat = float(customer_info['Latitude'])
+        customer_lon = float(customer_info['Longitude'])
+        
+        # محاسبه فاصله
+        distance = calculate_distance(current_lat, current_lon, customer_lat, customer_lon)
+        
+        if distance is None:
+            return jsonify({'error': 'خطا در محاسبه فاصله'}), 500
+        
+        print(f"🔍 فاصله محاسبه شده: {distance:.2f} متر")
+        
+        # بررسی فاصله (5 متر)
+        MAX_DISTANCE = 5.0
+        
+        if distance > MAX_DISTANCE:
+            return jsonify({
+                'error': f'شما در موقعیت مشتری نیستید! فاصله: {distance:.1f} متر',
+                'distance': round(distance, 1),
+                'max_distance': MAX_DISTANCE,
+                'too_far': True
+            }), 403
+        
+        # اگر فاصله مجاز باشد، مراجعه را ثبت کنید
+        visits_df = load_visits_from_excel()
+        if visits_df is None:
+            visits_df = pd.DataFrame(columns=['VisitCode', 'BazaryabCode', 'CustomerCode', 'VisitDate', 'VisitTime', 'Latitude', 'Longitude', 'Distance'])
+        
+        # ایجاد کد مراجعه جدید
+        visit_count = len(visits_df) + 1
+        visit_code = f"V{visit_count:03d}"
+        
+        # ایجاد رکورد جدید
+        now = datetime.now()
+        new_visit = {
+            'VisitCode': visit_code,
+            'BazaryabCode': session['user_info']['Codev'],
+            'CustomerCode': customer_code,
+            'VisitDate': now.strftime('%Y-%m-%d'),
+            'VisitTime': now.strftime('%H:%M'),
+            'Latitude': current_lat,
+            'Longitude': current_lon,
+            'Distance': round(distance, 2)
+        }
+        
+        # اضافه کردن به DataFrame
+        visits_df = pd.concat([visits_df, pd.DataFrame([new_visit])], ignore_index=True)
+        
+        # ذخیره فایل
+        if save_visits_to_excel(visits_df):
+            return jsonify({
+                'success': True,
+                'message': f'مراجعه با موفقیت ثبت شد (فاصله: {distance:.1f} متر)',
+                'distance': round(distance, 1),
+                'visit_code': visit_code
+            }), 200
+        else:
+            return jsonify({'error': 'خطا در ثبت مراجعه'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ثبت مراجعه: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+        
 @app.route('/show_map/<customer_code>')
 def show_map(customer_code):
     """نمایش مکان مشتری روی نقشه"""
