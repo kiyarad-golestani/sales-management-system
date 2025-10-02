@@ -11,6 +11,7 @@ import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from datetime import timedelta
 from math import radians, sin, cos, sqrt, atan2
+from pytz import timezone as pytz_timezone
 
 
 app = Flask(__name__)
@@ -560,6 +561,19 @@ def record_visit():
         # ایجاد کد مراجعه جدید
         visit_count = len(visits_df) + 1
         visit_code = f"V{visit_count:03d}"
+        
+        # ✅ تاریخ و ساعت شمسی با timezone صحیح
+        from pytz import timezone as pytz_timezone
+        
+        # دریافت زمان با timezone ایران
+        iran_tz = pytz_timezone('Asia/Tehran')
+        now = datetime.now(iran_tz)
+        
+        # تبدیل به تاریخ شمسی
+        jalali_now = jdatetime.datetime.fromgregorian(
+            datetime=now.replace(tzinfo=None)
+        )
+
         
         # ایجاد رکورد جدید
         now = datetime.now()
