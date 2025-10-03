@@ -152,7 +152,12 @@
                 <a href="{{ url_for('orders_report') }}">سفارشات</a>
                 <a href="{{ url_for('all_reports') }}"> گزارشات حضور</a>
                 <a href="{{ url_for('brand_report') }}">گزارش برندی</a>
-                
+                <a href="{{ url_for('change_password') }}" style="background: #17a2b8; color: white; border: none;">
+                    <i class="fas fa-key"></i> تغییر رمز عبور
+                </a>
+				<a href="{{ url_for('weekly_sales_report') }}" style="background: linear-gradient(45deg, #3498db, #2980b9); color: white; border: none;">
+                   گزارش هفتگی فروش
+                </a>
                 {% if user.Typev == 'admin' %}
                     <a href="{{ url_for('users_list') }}">کاربران</a>
                     

@@ -81,7 +81,7 @@
         
         .filter-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: 1fr 2fr 1fr;
             gap: 20px;
             align-items: end;
         }
@@ -113,6 +113,171 @@
             border-color: #667eea;
         }
         
+        /* Multi-Select Styles */
+        .multi-select-container {
+            position: relative;
+        }
+        
+        .multi-select-display {
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-height: 45px;
+            transition: border-color 0.3s;
+        }
+        
+        .multi-select-display:hover {
+            border-color: #667eea;
+        }
+        
+        .multi-select-display.open {
+            border-color: #667eea;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        
+        .selected-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .selected-item {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .selected-item .remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .selected-item .remove:hover {
+            color: #ff6b6b;
+        }
+        
+        .placeholder {
+            color: #999;
+        }
+        
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .multi-select-dropdown.open {
+            display: block;
+        }
+        
+        .multi-select-search {
+            padding: 10px;
+            border-bottom: 1px solid #e1e1e1;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+        
+        .multi-select-search input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .multi-select-options {
+            padding: 5px 0;
+        }
+        
+        .multi-select-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .multi-select-option:hover {
+            background: #f8f9ff;
+        }
+        
+        .multi-select-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .multi-select-option.selected {
+            background: #e8f0fe;
+        }
+        
+        .multi-select-option label {
+            cursor: pointer;
+            flex: 1;
+            margin: 0;
+        }
+        
+        .multi-select-actions {
+            padding: 10px;
+            border-top: 1px solid #e1e1e1;
+            display: flex;
+            gap: 10px;
+            background: #f8f9ff;
+            position: sticky;
+            bottom: 0;
+        }
+        
+        .multi-select-actions button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+        
+        .select-all-btn {
+            background: #28a745;
+            color: white;
+        }
+        
+        .select-all-btn:hover {
+            background: #218838;
+        }
+        
+        .clear-all-btn {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .clear-all-btn:hover {
+            background: #c82333;
+        }
+        
         .btn {
             padding: 12px 24px;
             border: none;
@@ -135,6 +300,12 @@
             transform: translateY(-2px);
         }
         
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .btn-secondary {
             background: #6c757d;
             color: white;
@@ -155,6 +326,20 @@
             display: none;
         }
         
+        .product-comparison-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .product-comparison-header h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
         .product-header {
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             color: white;
@@ -172,6 +357,7 @@
             height: 80px;
             border-radius: 10px;
             object-fit: cover;
+            border: 3px solid white;
         }
         
         .product-details h2 {
@@ -181,6 +367,7 @@
         
         .product-details p {
             opacity: 0.9;
+            margin: 3px 0;
         }
         
         .product-stats {
@@ -384,7 +571,7 @@
             background: #fff3cd;
             padding: 15px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-top: 20px;
             border: 1px solid #ffeaa7;
         }
         
@@ -426,6 +613,10 @@
                 text-align: center;
             }
             
+            .product-image {
+                margin: 0 auto;
+            }
+            
             .customers-grid {
                 grid-template-columns: 1fr;
             }
@@ -454,11 +645,11 @@
         
         <div class="welcome-header">
             <h2>گزارش مشتریان بر اساس برند و کالا</h2>
-            <p>مشاهده مشتریانی که کالای خاص را خریده یا نخریده‌اند</p>
+            <p>مشاهده مشتریانی که کالاهای خاص را خریده یا نخریده‌اند</p>
         </div>
         
         <div class="filter-section">
-            <h3 style="margin-bottom: 20px; color: #333;">انتخاب برند و کالا</h3>
+            <h3 style="margin-bottom: 20px; color: #333;">انتخاب برند و کالاها</h3>
             
             <div class="filter-row">
                 <div class="filter-group">
@@ -469,10 +660,26 @@
                 </div>
                 
                 <div class="filter-group">
-                    <label>انتخاب کالا:</label>
-                    <select id="productSelect" disabled>
-                        <option value="">ابتدا برند را انتخاب کنید</option>
-                    </select>
+                    <label>انتخاب کالاها (می‌توانید چند کالا انتخاب کنید):</label>
+                    <div class="multi-select-container">
+                        <div class="multi-select-display" id="multiSelectDisplay">
+                            <div class="selected-items" id="selectedItems">
+                                <span class="placeholder">ابتدا برند را انتخاب کنید</span>
+                            </div>
+                        </div>
+                        <div class="multi-select-dropdown" id="multiSelectDropdown">
+                            <div class="multi-select-search">
+                                <input type="text" id="productSearchInput" placeholder="جستجوی کالا...">
+                            </div>
+                            <div class="multi-select-options" id="productOptions">
+                                <!-- گزینه‌ها اینجا اضافه می‌شوند -->
+                            </div>
+                            <div class="multi-select-actions">
+                                <button class="select-all-btn" onclick="selectAllProducts()">انتخاب همه</button>
+                                <button class="clear-all-btn" onclick="clearAllProducts()">پاک کردن همه</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="filter-group">
@@ -512,11 +719,41 @@
 
     <script>
         let brandData = {};
+        let selectedProducts = [];
+        let allProductsInBrand = [];
         
         // بارگذاری داده‌های برند در هنگام لود صفحه
         document.addEventListener('DOMContentLoaded', function() {
             loadBrandData();
+            setupMultiSelect();
         });
+        
+        function setupMultiSelect() {
+            const display = document.getElementById('multiSelectDisplay');
+            const dropdown = document.getElementById('multiSelectDropdown');
+            const searchInput = document.getElementById('productSearchInput');
+            
+            // باز/بسته کردن dropdown
+            display.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('remove')) {
+                    dropdown.classList.toggle('open');
+                    display.classList.toggle('open');
+                }
+            });
+            
+            // بستن dropdown با کلیک بیرون
+            document.addEventListener('click', function(e) {
+                if (!display.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                    display.classList.remove('open');
+                }
+            });
+            
+            // جستجو در محصولات
+            searchInput.addEventListener('input', function() {
+                filterProducts(this.value);
+            });
+        }
         
         function loadBrandData() {
             fetch('/get_brand_data')
@@ -538,7 +775,7 @@
         
         function populateBrandSelect(brands) {
             const brandSelect = document.getElementById('brandSelect');
-            brandSelect.innerHTML = '<option value="">همه برندها</option>';
+            brandSelect.innerHTML = '<option value="">انتخاب برند...</option>';
             
             brands.forEach(brand => {
                 const option = document.createElement('option');
@@ -548,55 +785,155 @@
             });
             
             brandSelect.addEventListener('change', function() {
-                populateProductSelect(this.value);
+                populateProductOptions(this.value);
             });
         }
         
-        function populateProductSelect(selectedBrand) {
-            const productSelect = document.getElementById('productSelect');
-            const loadBtn = document.getElementById('loadBtn');
+        function populateProductOptions(selectedBrand) {
+            const productOptions = document.getElementById('productOptions');
+            
+            // پاک کردن انتخاب‌های قبلی
+            selectedProducts = [];
+            allProductsInBrand = [];
+            updateSelectedDisplay();
             
             if (!selectedBrand) {
-                productSelect.innerHTML = '<option value="">ابتدا برند را انتخاب کنید</option>';
-                productSelect.disabled = true;
-                loadBtn.disabled = true;
+                productOptions.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">ابتدا برند را انتخاب کنید</div>';
+                document.getElementById('loadBtn').disabled = true;
                 return;
             }
             
-            productSelect.innerHTML = '<option value="">انتخاب کالا...</option>';
+            productOptions.innerHTML = '';
             
             if (brandData[selectedBrand]) {
+                allProductsInBrand = brandData[selectedBrand];
+                
                 brandData[selectedBrand].forEach(product => {
-                    const option = document.createElement('option');
-                    option.value = product.ProductCode;
-                    option.textContent = `${product.ProductName} (${formatNumber(product.Price)} تومان)`;
-                    productSelect.appendChild(option);
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'multi-select-option';
+                    optionDiv.dataset.productCode = product.ProductCode;
+                    optionDiv.dataset.productName = product.ProductName;
+                    optionDiv.dataset.productPrice = product.Price;
+                    
+                    optionDiv.innerHTML = `
+                        <input type="checkbox" id="product_${product.ProductCode}" value="${product.ProductCode}">
+                        <label for="product_${product.ProductCode}">
+                            ${product.ProductName} (${formatNumber(product.Price)} تومان)
+                        </label>
+                    `;
+                    
+                    // رویداد تغییر checkbox
+                    const checkbox = optionDiv.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', function() {
+                        toggleProductSelection(product.ProductCode, product.ProductName, this.checked);
+                    });
+                    
+                    // کلیک روی div هم checkbox را تغییر دهد
+                    optionDiv.addEventListener('click', function(e) {
+                        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'LABEL') {
+                            checkbox.checked = !checkbox.checked;
+                            checkbox.dispatchEvent(new Event('change'));
+                        }
+                    });
+                    
+                    productOptions.appendChild(optionDiv);
                 });
             }
+        }
+        
+        function toggleProductSelection(productCode, productName, isSelected) {
+            if (isSelected) {
+                if (!selectedProducts.find(p => p.code === productCode)) {
+                    selectedProducts.push({ code: productCode, name: productName });
+                }
+            } else {
+                selectedProducts = selectedProducts.filter(p => p.code !== productCode);
+            }
             
-            productSelect.disabled = false;
+            updateSelectedDisplay();
+            document.getElementById('loadBtn').disabled = selectedProducts.length === 0;
+        }
+        
+        function updateSelectedDisplay() {
+            const selectedItemsDiv = document.getElementById('selectedItems');
             
-            productSelect.addEventListener('change', function() {
-                loadBtn.disabled = !this.value;
+            if (selectedProducts.length === 0) {
+                selectedItemsDiv.innerHTML = '<span class="placeholder">کالا را انتخاب کنید...</span>';
+            } else {
+                selectedItemsDiv.innerHTML = selectedProducts.map(product => `
+                    <div class="selected-item">
+                        <span>${product.name}</span>
+                        <span class="remove" onclick="removeProduct('${product.code}')">×</span>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function removeProduct(productCode) {
+            event.stopPropagation();
+            
+            // حذف از لیست
+            selectedProducts = selectedProducts.filter(p => p.code !== productCode);
+            
+            // uncheck کردن checkbox
+            const checkbox = document.getElementById(`product_${productCode}`);
+            if (checkbox) {
+                checkbox.checked = false;
+            }
+            
+            updateSelectedDisplay();
+            document.getElementById('loadBtn').disabled = selectedProducts.length === 0;
+        }
+        
+        function selectAllProducts() {
+            allProductsInBrand.forEach(product => {
+                const checkbox = document.getElementById(`product_${product.ProductCode}`);
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                    toggleProductSelection(product.ProductCode, product.ProductName, true);
+                }
+            });
+        }
+        
+        function clearAllProducts() {
+            selectedProducts = [];
+            document.querySelectorAll('.multi-select-option input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            updateSelectedDisplay();
+            document.getElementById('loadBtn').disabled = true;
+        }
+        
+        function filterProducts(searchTerm) {
+            const options = document.querySelectorAll('.multi-select-option');
+            const term = searchTerm.toLowerCase();
+            
+            options.forEach(option => {
+                const productName = option.dataset.productName.toLowerCase();
+                if (productName.includes(term)) {
+                    option.style.display = 'flex';
+                } else {
+                    option.style.display = 'none';
+                }
             });
         }
         
         function loadCustomerReport() {
-            const productCode = document.getElementById('productSelect').value;
-            const dateFrom = document.getElementById('dateFrom').value.trim();
-            const dateTo = document.getElementById('dateTo').value.trim();
-            
-            if (!productCode) {
-                alert('لطفاً کالا را انتخاب کنید');
+            if (selectedProducts.length === 0) {
+                alert('لطفاً حداقل یک کالا انتخاب کنید');
                 return;
             }
+            
+            const dateFrom = document.getElementById('dateFrom').value.trim();
+            const dateTo = document.getElementById('dateTo').value.trim();
             
             // نمایش loading
             document.getElementById('loading').style.display = 'block';
             document.getElementById('resultsContainer').style.display = 'none';
             
-            // ساخت URL با پارامترها
-            let url = `/get_customers_by_product?product_code=${productCode}&date_type=jalali`;
+            // ساخت URL با چند product_code
+            const productCodes = selectedProducts.map(p => p.code).join(',');
+            let url = `/get_customers_by_products?product_codes=${productCodes}&date_type=jalali`;
             
             if (dateFrom && dateTo) {
                 url += `&date_from=${dateFrom}&date_to=${dateTo}`;
@@ -625,60 +962,85 @@
         function displayCustomerResults(data) {
             const container = document.getElementById('resultsContainer');
             
-            // هدر کالا
-            const productImageSrc = `/static/images/${data.product.ImageFile}`;
+            // هدر مقایسه محصولات
             const dateRange = data.date_from && data.date_to ? 
                 `در بازه ${data.date_from} تا ${data.date_to}` : 
                 'در کل دوره';
             
+            const comparisonHeaderHtml = `
+                <div class="product-comparison-header">
+                    <h3>گزارش مقایسه‌ای ${selectedProducts.length} کالا</h3>
+                    <p>${dateRange}</p>
+                    <p style="font-size: 14px; opacity: 0.9; margin-top: 10px;">
+                        کالاهای انتخابی: ${selectedProducts.map(p => p.name).join(' • ')}
+                    </p>
+                </div>
+            `;
+            
+            // برای هر محصول، گزارش جداگانه نمایش بده
+            let allProductsHtml = '';
+            
+            data.products.forEach(productData => {
+                allProductsHtml += createProductSection(productData);
+            });
+            
+            container.innerHTML = comparisonHeaderHtml + allProductsHtml;
+            container.style.display = 'block';
+        }
+        
+        function createProductSection(productData) {
+            const productImageSrc = `/static/images/${productData.product.ImageFile}`;
+            
             const productHeaderHtml = `
-                <div class="product-header">
-                    <img src="${productImageSrc}" alt="${data.product.ProductName}" class="product-image" onerror="this.src='/static/images/null.jpg'">
+                <div class="product-header" style="margin-top: 30px;">
+                    <img src="${productImageSrc}" alt="${productData.product.ProductName}" class="product-image" onerror="this.src='/static/images/null.jpg'">
                     <div class="product-details">
-                        <h2>${data.product.ProductName}</h2>
-                        <p>برند: ${data.product.Brand} | دسته: ${data.product.Category}</p>
-                        <p>قیمت: ${formatNumber(data.product.Price)} تومان</p>
-                        <p>${dateRange}</p>
+                        <h2>${productData.product.ProductName}</h2>
+                        <p>برند: ${productData.product.Brand} | دسته: ${productData.product.Category}</p>
+                        <p>قیمت: ${formatNumber(productData.product.Price)} تومان</p>
                     </div>
                     <div class="product-stats">
-                        <div class="stat-number">${formatNumber(data.product.Price)}</div>
-                        <div class="stat-label">قیمت (تومان)</div>
+                        <div class="stat-number">${productData.total_purchased}</div>
+                        <div class="stat-label">مشتری خریدار</div>
                     </div>
                 </div>
             `;
             
-            // آمار کلی
+            // آمار این محصول
+            const totalCustomers = productData.total_purchased + productData.total_not_purchased;
+            const salesPercentage = totalCustomers > 0 ? Math.round((productData.total_purchased / totalCustomers) * 100) : 0;
+            
             const summaryHtml = `
                 <div class="summary-cards">
                     <div class="summary-card">
-                        <div class="summary-number">${data.total_purchased}</div>
+                        <div class="summary-number">${productData.total_purchased}</div>
                         <div class="summary-label">مشتریان خریدار</div>
                     </div>
                     <div class="summary-card">
-                        <div class="summary-number">${data.total_not_purchased}</div>
+                        <div class="summary-number">${productData.total_not_purchased}</div>
                         <div class="summary-label">مشتریان غیرخریدار</div>
                     </div>
                     <div class="summary-card">
-                        <div class="summary-number">${data.total_purchased + data.total_not_purchased}</div>
-                        <div class="summary-label">کل مشتریان</div>
+                        <div class="summary-number">${salesPercentage}%</div>
+                        <div class="summary-label">درصد فروش</div>
                     </div>
                     <div class="summary-card">
-                        <div class="summary-number">${data.total_purchased > 0 ? Math.round((data.total_purchased / (data.total_purchased + data.total_not_purchased)) * 100) : 0}%</div>
-                        <div class="summary-label">درصد فروش</div>
+                        <div class="summary-number">${totalCustomers}</div>
+                        <div class="summary-label">کل مشتریان</div>
                     </div>
                 </div>
             `;
             
             // مشتریان خریدار
             let purchasedHtml = '';
-            if (data.purchased_customers.length > 0) {
+            if (productData.purchased_customers.length > 0) {
                 purchasedHtml = `
                     <div class="customers-section">
                         <div class="section-title purchased">
-                            ✅ مشتریان خریدار (${data.purchased_customers.length} مشتری)
+                            ✅ مشتریان خریدار (${productData.purchased_customers.length} مشتری)
                         </div>
                         <div class="customers-grid">
-                            ${data.purchased_customers.map(customer => createCustomerCard(customer, true)).join('')}
+                            ${productData.purchased_customers.map(customer => createCustomerCard(customer, true)).join('')}
                         </div>
                     </div>
                 `;
@@ -686,32 +1048,20 @@
             
             // مشتریان غیرخریدار
             let notPurchasedHtml = '';
-            if (data.not_purchased_customers.length > 0) {
+            if (productData.not_purchased_customers.length > 0) {
                 notPurchasedHtml = `
                     <div class="customers-section">
                         <div class="section-title not-purchased">
-                            ❌ مشتریان غیرخریدار (${data.not_purchased_customers.length} مشتری)
+                            ❌ مشتریان غیرخریدار (${productData.not_purchased_customers.length} مشتری)
                         </div>
                         <div class="customers-grid">
-                            ${data.not_purchased_customers.map(customer => createCustomerCard(customer, false)).join('')}
+                            ${productData.not_purchased_customers.map(customer => createCustomerCard(customer, false)).join('')}
                         </div>
                     </div>
                 `;
             }
             
-            // اگر هیچ مشتری نباشد
-            if (data.purchased_customers.length === 0 && data.not_purchased_customers.length === 0) {
-                container.innerHTML = productHeaderHtml + `
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <h3>هیچ مشتری یافت نشد</h3>
-                        <p>احتمالاً هیچ مشتری به این بازاریاب اختصاص نیافته است</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = productHeaderHtml + summaryHtml + purchasedHtml + notPurchasedHtml;
-            }
-            
-            container.style.display = 'block';
+            return productHeaderHtml + summaryHtml + purchasedHtml + notPurchasedHtml;
         }
         
         function createCustomerCard(customer, isPurchased) {
