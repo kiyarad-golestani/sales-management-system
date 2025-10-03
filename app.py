@@ -2198,6 +2198,90 @@ def get_user_brand_sales_data():
         traceback.print_exc()
         return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
 
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    """صفحه تغییر رمز عبور"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        try:
+            current_password = request.form.get('current_password', '').strip()
+            new_password = request.form.get('new_password', '').strip()
+            confirm_password = request.form.get('confirm_password', '').strip()
+            
+            # اعتبارسنجی ورودی‌ها
+            if not current_password or not new_password or not confirm_password:
+                flash('لطفاً تمام فیلدها را پر کنید', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            # بررسی طول رمز جدید
+            if len(new_password) < 6:
+                flash('رمز عبور جدید باید حداقل 6 کاراکتر باشد', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            # بررسی تطابق رمز جدید
+            if new_password != confirm_password:
+                flash('رمز عبور جدید و تکرار آن مطابقت ندارند', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            # بررسی اینکه رمز جدید با رمز قبلی متفاوت باشد
+            if current_password == new_password:
+                flash('رمز عبور جدید نمی‌تواند با رمز فعلی یکسان باشد', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            # بارگذاری کاربران
+            users_df = load_users_from_excel()
+            if users_df is None:
+                flash('خطا در بارگذاری اطلاعات کاربران', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            user_code = session['user_info']['Codev']
+            
+            # پیدا کردن کاربر
+            user_index = users_df[users_df['Codev'] == user_code].index
+            
+            if user_index.empty:
+                flash('کاربر یافت نشد', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            # بررسی صحت رمز فعلی
+            stored_password = str(users_df.loc[user_index[0], 'Passv']).strip()
+            
+            if stored_password != current_password:
+                flash('رمز عبور فعلی اشتباه است', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+            
+            # تغییر رمز عبور
+            users_df.loc[user_index[0], 'Passv'] = new_password
+            
+            # ذخیره فایل
+            try:
+                users_df.to_excel(USERS_FILE, sheet_name='users', index=False)
+                print(f"✅ رمز عبور کاربر {user_code} با موفقیت تغییر کرد")
+                
+                flash('رمز عبور شما با موفقیت تغییر کرد', 'success')
+                
+                # بروزرسانی session (اختیاری)
+                # می‌توانید کاربر را logout کنید یا session را نگه دارید
+                
+                return redirect(url_for('index'))
+                
+            except Exception as e:
+                print(f"❌ خطا در ذخیره فایل کاربران: {e}")
+                flash('خطا در ذخیره رمز عبور جدید', 'error')
+                return render_template('change_password.html', user=session['user_info'])
+                
+        except Exception as e:
+            print(f"❌ خطا در تغییر رمز عبور: {e}")
+            import traceback
+            traceback.print_exc()
+            flash('خطای سرور در تغییر رمز عبور', 'error')
+            return render_template('change_password.html', user=session['user_info'])
+    
+    # GET request
+    return render_template('change_password.html', user=session['user_info'])
+
 @app.route('/submit_order', methods=['POST'])
 def submit_order():
     """ثبت سفارش جدید"""
@@ -5730,7 +5814,524 @@ def get_my_tours():
     except Exception as e:
         print(f"❌ خطا در دریافت تورهای بازاریاب: {e}")
         return jsonify({'error': str(e)}), 500
+@app.route('/get_customers_by_products')
+def get_customers_by_products():
+    """دریافت مشتریانی که چند کالای خاص را خریده/نخریده‌اند"""
+    try:
+        # چک احراز هویت
+        if 'user_id' not in session:
+            print("❌ Unauthorized access attempt")
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        # دریافت پارامترها
+        product_codes_str = request.args.get('product_codes')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
+        date_type = request.args.get('date_type', 'jalali')
+        
+        if not product_codes_str:
+            return jsonify({'error': 'کد کالاها الزامی است'}), 400
+        
+        # تبدیل string به list
+        product_codes = [code.strip() for code in product_codes_str.split(',') if code.strip()]
+        
+        if not product_codes:
+            return jsonify({'error': 'هیچ کالایی انتخاب نشده'}), 400
+        
+        print(f"🔍 Multi-product analysis for {len(product_codes)} products")
+        
+        # بارگذاری داده‌ها
+        customers_df = load_customers_from_excel()
+        products_df = load_products_from_excel()
+        sales_df = load_sales_from_excel()
+        users_df = load_users_from_excel()
+        
+        if customers_df is None or products_df is None:
+            return jsonify({'error': 'خطا در بارگذاری فایل‌ها'}), 500
+        
+        # فیلتر مشتریان بر اساس بازاریاب
+        bazaryab_code = session['user_info']['Codev']
+        if session['user_info']['Typev'] != 'admin':
+            my_customers = customers_df[customers_df['BazaryabCode'] == bazaryab_code]
+            print(f"👤 User filter: {len(my_customers)} customers")
+        else:
+            my_customers = customers_df
+            print(f"👑 Admin: {len(my_customers)} total customers")
+        
+        # پردازش هر محصول
+        products_results = []
+        
+        for product_code in product_codes:
+            # بررسی وجود کالا
+            product_info = products_df[products_df['ProductCode'] == product_code]
+            if product_info.empty:
+                print(f"⚠️ Product not found: {product_code}")
+                continue
+            
+            product_details = product_info.iloc[0].to_dict()
+            
+            # محاسبه مشتریان خریدار/نخریدار برای این محصول
+            product_result = calculate_product_customers(
+                product_code, product_details, my_customers, 
+                sales_df, users_df, date_from, date_to, date_type
+            )
+            
+            products_results.append(product_result)
+        
+        print(f"✅ Analysis complete for {len(products_results)} products")
+        
+        return jsonify({
+            'success': True,
+            'products': products_results,
+            'date_from': date_from,
+            'date_to': date_to,
+            'date_type': date_type
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_customers_by_products: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
 
+
+def calculate_product_customers(product_code, product_details, customers_df, sales_df, users_df, date_from, date_to, date_type):
+    """محاسبه مشتریان خریدار/نخریدار برای یک محصول"""
+    try:
+        print(f"📊 Processing product: {product_code}")
+        
+        # تبدیل تاریخ
+        date_from_gregorian = None
+        date_to_gregorian = None
+        
+        if date_from and date_to:
+            if date_type == 'jalali':
+                date_from_gregorian = jalali_to_gregorian(date_from)
+                date_to_gregorian = jalali_to_gregorian(date_to)
+                
+                if not date_from_gregorian or not date_to_gregorian:
+                    print(f"⚠️ Invalid date format")
+                    date_from_gregorian = None
+                    date_to_gregorian = None
+            else:
+                date_from_gregorian = date_from
+                date_to_gregorian = date_to
+        
+        # فیلتر فروش
+        purchased_codes = []
+        product_sales = pd.DataFrame()
+        
+        if sales_df is not None and not sales_df.empty:
+            def convert_sale_date(date_value):
+                if pd.isna(date_value):
+                    return None
+                date_str = str(date_value).strip()
+                if '/' in date_str and len(date_str.split('/')) == 3:
+                    return jalali_to_gregorian(date_str)
+                elif '-' in date_str and len(date_str) == 10:
+                    return date_str
+                return None
+            
+            sales_copy = sales_df.copy()
+            sales_copy['DateConverted'] = sales_copy['InvoiceDate'].apply(convert_sale_date)
+            
+            # فیلتر بر اساس تاریخ
+            if date_from_gregorian and date_to_gregorian:
+                filtered_sales = sales_copy[
+                    (sales_copy['DateConverted'] >= date_from_gregorian) &
+                    (sales_copy['DateConverted'] <= date_to_gregorian)
+                ]
+                print(f"   📅 Filtered sales: {len(filtered_sales)} records")
+            else:
+                filtered_sales = sales_copy
+                print(f"   📅 All sales: {len(filtered_sales)} records")
+            
+            # فروش این محصول
+            product_sales = filtered_sales[filtered_sales['ProductCode'] == product_code]
+            purchased_codes = product_sales['CustomerCode'].unique().tolist()
+            
+            print(f"   💰 Product sales: {len(product_sales)} records, {len(purchased_codes)} unique customers")
+        else:
+            print(f"   ⚠️ No sales data available")
+        
+        # تفکیک مشتریان
+        purchased_customers = []
+        not_purchased_customers = []
+        
+        for _, customer in customers_df.iterrows():
+            customer_code = customer['CustomerCode']
+            customer_name = customer['CustomerName']
+            bazaryab_code = customer['BazaryabCode']
+            
+            # نام بازاریاب
+            bazaryab_name = "نامشخص"
+            if users_df is not None:
+                bazaryab = users_df[users_df['Codev'] == bazaryab_code]
+                if not bazaryab.empty:
+                    bazaryab_name = bazaryab.iloc[0]['Namev']
+            
+            # بررسی LocationSet
+            location_set = customer.get('LocationSet', False)
+            if pd.isna(location_set):
+                location_set = False
+            elif isinstance(location_set, str):
+                location_set = location_set.lower() in ['true', '1', 'yes', 'بله']
+            else:
+                location_set = bool(location_set)
+            
+            customer_data = {
+                'CustomerCode': str(customer_code),
+                'CustomerName': str(customer_name),
+                'BazaryabName': bazaryab_name,
+                'LocationSet': location_set
+            }
+            
+            if customer_code in purchased_codes:
+                # محاسبه آمار خرید
+                customer_sales = product_sales[product_sales['CustomerCode'] == customer_code]
+                
+                # محاسبه امن
+                total_qty = 0
+                total_amount = 0
+                
+                for _, sale in customer_sales.iterrows():
+                    qty = sale.get('Quantity', 0)
+                    amount = sale.get('TotalAmount', 0)
+                    
+                    if not pd.isna(qty):
+                        total_qty += int(qty)
+                    if not pd.isna(amount):
+                        total_amount += float(amount)
+                
+                # تاریخ‌های خرید
+                purchase_dates = []
+                for _, sale in customer_sales.iterrows():
+                    original_date = sale.get('InvoiceDate', '')
+                    
+                    if pd.isna(original_date):
+                        continue
+                    
+                    # تبدیل تاریخ برای نمایش
+                    date_str = str(original_date).strip()
+                    if '/' in date_str:
+                        display_date = date_str
+                    elif '-' in date_str and len(date_str) == 10:
+                        display_date = gregorian_to_jalali(date_str)
+                    else:
+                        display_date = date_str
+                    
+                    qty = sale.get('Quantity', 0)
+                    amount = sale.get('TotalAmount', 0)
+                    
+                    purchase_dates.append({
+                        'date': display_date,
+                        'quantity': int(qty) if not pd.isna(qty) else 0,
+                        'amount': int(amount) if not pd.isna(amount) else 0
+                    })
+                
+                customer_data.update({
+                    'TotalQuantity': int(total_qty),
+                    'TotalAmount': int(total_amount),
+                    'PurchaseDates': purchase_dates
+                })
+                purchased_customers.append(customer_data)
+            else:
+                not_purchased_customers.append(customer_data)
+        
+        print(f"   ✅ Result: {len(purchased_customers)} purchased, {len(not_purchased_customers)} not purchased")
+        
+        # تمیز کردن product_details از NaN
+        clean_product_details = {}
+        for key, value in product_details.items():
+            if pd.isna(value):
+                if key in ['Price', 'Stock']:
+                    clean_product_details[key] = 0
+                else:
+                    clean_product_details[key] = ""
+            else:
+                clean_product_details[key] = value
+        
+        return {
+            'product': clean_product_details,
+            'purchased_customers': purchased_customers,
+            'not_purchased_customers': not_purchased_customers,
+            'total_purchased': len(purchased_customers),
+            'total_not_purchased': len(not_purchased_customers)
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in calculate_product_customers for {product_code}: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        # برگرداندن نتیجه خالی در صورت خطا
+        return {
+            'product': product_details,
+            'purchased_customers': [],
+            'not_purchased_customers': [],
+            'total_purchased': 0,
+            'total_not_purchased': 0
+        }
+
+@app.route('/weekly_sales_report')
+def weekly_sales_report():
+    """صفحه گزارش هفتگی فروش"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('weekly_sales_report.html', user=session['user_info'])
+
+@app.route('/get_weekly_sales_report')
+def get_weekly_sales_report():
+    """دریافت گزارش هفتگی فروش"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        year = int(request.args.get('year', 1404))
+        
+        print(f"📊 Generating weekly report for year {year}")
+        
+        # بارگذاری داده‌ها
+        sales_df = load_sales_from_excel()
+        customers_df = load_customers_from_excel()
+        
+        if sales_df is None or sales_df.empty:
+            return jsonify({'error': 'داده‌های فروش یافت نشد'}), 404
+        
+        # فیلتر بر اساس کاربر
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        if user_type != 'admin' and customers_df is not None:
+            # فقط فروش‌های مشتریان این بازاریاب
+            my_customers = customers_df[customers_df['BazaryabCode'] == user_code]
+            customer_codes = my_customers['CustomerCode'].tolist()
+            filtered_sales = sales_df[sales_df['CustomerCode'].isin(customer_codes)]
+        else:
+            filtered_sales = sales_df
+        
+        # تولید گزارش هفتگی
+        weekly_report = generate_weekly_sales_report(filtered_sales, year)
+        
+        return jsonify(weekly_report)
+        
+    except Exception as e:
+        print(f"❌ Error in get_weekly_sales_report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+def generate_weekly_sales_report(sales_df, year):
+    """تولید گزارش هفتگی فروش - هفته‌ها از شنبه شروع می‌شوند"""
+    try:
+        # نام ماه‌های شمسی
+        month_names = [
+            'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        ]
+        
+        # نام روزهای هفته
+        day_names = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه']
+        
+        # تبدیل تاریخ‌های فروش
+        def parse_sale_date(date_value):
+            if pd.isna(date_value):
+                return None
+            
+            date_str = str(date_value).strip()
+            
+            try:
+                # اگر شمسی است
+                if '/' in date_str and len(date_str.split('/')) == 3:
+                    parts = date_str.split('/')
+                    return jdatetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+                # اگر میلادی است
+                elif '-' in date_str and len(date_str) == 10:
+                    gregorian_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    return jdatetime.date.fromgregorian(date=gregorian_date)
+            except:
+                return None
+            
+            return None
+        
+        # اضافه کردن ستون تاریخ پارس شده
+        sales_df['ParsedDate'] = sales_df['InvoiceDate'].apply(parse_sale_date)
+        
+        # فیلتر فروش‌های سال مورد نظر
+        year_sales = sales_df[
+            (sales_df['ParsedDate'].notna()) &
+            (sales_df['ParsedDate'].apply(lambda x: x.year if x else 0) == year)
+        ].copy()
+        
+        print(f"   Found {len(year_sales)} sales for year {year}")
+        
+        if year_sales.empty:
+            return {
+                'summary': {
+                    'total_sales': 0,
+                    'total_invoices': 0,
+                    'average_per_week': 0,
+                    'total_weeks': 0
+                },
+                'months': []
+            }
+        
+        # محاسبه آمار کلی
+        total_sales = int(year_sales['TotalAmount'].fillna(0).sum())
+        total_invoices = len(year_sales)
+        
+        # تولید گزارش ماه به ماه
+        months_data = []
+        total_weeks = 0
+        
+        # حلقه روی ماه‌ها
+        for month_num in range(1, 13):
+            month_name = month_names[month_num - 1]
+            
+            # فروش‌های این ماه
+            month_sales = year_sales[
+                year_sales['ParsedDate'].apply(lambda x: x.month if x else 0) == month_num
+            ].copy()
+            
+            if month_sales.empty:
+                continue
+            
+            # محاسبه آمار ماه
+            month_total = int(month_sales['TotalAmount'].fillna(0).sum())
+            month_invoices = len(month_sales)
+            
+            # تعیین تعداد روزهای ماه
+            days_in_month = 31 if month_num <= 6 else 30
+            if month_num == 12:
+                # بررسی سال کبیسه
+                try:
+                    jdatetime.date(year, 12, 30)
+                    days_in_month = 30
+                except:
+                    days_in_month = 29
+            
+            # پیدا کردن اولین شنبه ماه
+            first_saturday = None
+            for day in range(1, days_in_month + 1):
+                try:
+                    current_date = jdatetime.date(year, month_num, day)
+                    if current_date.weekday() == 0:  # 0 = شنبه
+                        first_saturday = day
+                        break
+                except:
+                    continue
+            
+            if first_saturday is None:
+                continue
+            
+            # تقسیم به هفته‌ها (هر هفته از شنبه شروع می‌شود)
+            weeks_data = []
+            week_num = 1
+            current_day = first_saturday
+            
+            while current_day <= days_in_month:
+                week_name = f"هفته {week_num}"
+                week_days = []
+                week_total = 0
+                week_invoices = 0
+                
+                # 7 روز برای هر هفته (شنبه تا جمعه)
+                for day_offset in range(7):
+                    day = current_day + day_offset
+                    
+                    # بررسی اینکه آیا روز در همین ماه است یا ماه بعد
+                    try:
+                        if day <= days_in_month:
+                            # روز در همین ماه است
+                            current_date = jdatetime.date(year, month_num, day)
+                            is_next_month = False
+                        else:
+                            # روز در ماه بعد است
+                            next_month = month_num + 1 if month_num < 12 else 1
+                            next_year = year if month_num < 12 else year + 1
+                            next_month_day = day - days_in_month
+                            
+                            try:
+                                current_date = jdatetime.date(next_year, next_month, next_month_day)
+                                is_next_month = True
+                            except:
+                                break
+                        
+                        day_of_week = current_date.weekday()  # 0=شنبه, 6=جمعه
+                        day_name = day_names[day_of_week]
+                        
+                        # فروش‌های این روز
+                        day_sales = year_sales[
+                            year_sales['ParsedDate'] == current_date
+                        ]
+                        
+                        day_amount = int(day_sales['TotalAmount'].fillna(0).sum())
+                        day_invoices = len(day_sales)
+                        
+                        week_total += day_amount
+                        week_invoices += day_invoices
+                        
+                        week_days.append({
+                            'day_name': day_name,
+                            'date': current_date.strftime('%Y/%m/%d'),
+                            'sales_amount': day_amount,
+                            'invoice_count': day_invoices,
+                            'is_next_month': is_next_month
+                        })
+                        
+                    except Exception as e:
+                        print(f"   Error processing day {day}: {e}")
+                        break
+                
+                if week_days:
+                    weeks_data.append({
+                        'week_name': week_name,
+                        'week_total': week_total,
+                        'week_invoices': week_invoices,
+                        'days': week_days
+                    })
+                    week_num += 1
+                    total_weeks += 1
+                
+                # رفتن به شنبه بعدی
+                current_day += 7
+            
+            if weeks_data:
+                months_data.append({
+                    'month_name': month_name,
+                    'month_total': month_total,
+                    'month_invoices': month_invoices,
+                    'weeks': weeks_data
+                })
+        
+        average_per_week = int(total_sales / total_weeks) if total_weeks > 0 else 0
+        
+        print(f"   ✅ Report generated: {total_weeks} weeks, {total_sales:,} total sales")
+        
+        return {
+            'summary': {
+                'total_sales': total_sales,
+                'total_invoices': total_invoices,
+                'average_per_week': average_per_week,
+                'total_weeks': total_weeks
+            },
+            'months': months_data
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in generate_weekly_sales_report: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'summary': {
+                'total_sales': 0,
+                'total_invoices': 0,
+                'average_per_week': 0,
+                'total_weeks': 0
+            },
+            'months': []
+        }        
 # اضافه کردن requests به requirements اگر نداری
 # pip install requests
 # ===============================
