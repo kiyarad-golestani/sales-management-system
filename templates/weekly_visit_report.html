@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>گزارش هفتگی ویزیت</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e1e1e1;
+            flex-wrap: wrap;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+            border: 1px solid #667eea;
+        }
+        
+        .nav-links a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .welcome-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .filter-section {
+            background: #f8f9ff;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        /* Multi-Select Months */
+        .multi-select-container {
+            position: relative;
+        }
+        
+        .multi-select-display {
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            min-height: 45px;
+            transition: border-color 0.3s;
+        }
+        
+        .multi-select-display:hover {
+            border-color: #667eea;
+        }
+        
+        .multi-select-display.open {
+            border-color: #667eea;
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        
+        .selected-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .selected-item {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .selected-item .remove {
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .placeholder {
+            color: #999;
+        }
+        
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .multi-select-dropdown.open {
+            display: block;
+        }
+        
+        .multi-select-option {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .multi-select-option:hover {
+            background: #f8f9ff;
+        }
+        
+        .multi-select-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .multi-select-option label {
+            cursor: pointer;
+            flex: 1;
+            margin: 0;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+        
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 2px solid #e1e1e1;
+        }
+        
+        .summary-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .summary-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .month-section {
+            margin-bottom: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .month-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .week-container {
+            padding: 20px;
+        }
+        
+        .week-section {
+            margin-bottom: 30px;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .week-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .week-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .week-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+        
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e1e1e1;
+        }
+        
+        .day-column {
+            background: white;
+            padding: 15px;
+            min-height: 150px;
+        }
+        
+        .day-header {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .day-date {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .next-month-badge {
+            background: #ff9800;
+            color: white;
+            font-size: 9px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        
+        .visit-list {
+            margin-top: 10px;
+        }
+        
+        .visit-item {
+            background: #f8f9ff;
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .visit-time {
+            font-size: 11px;
+            color: #28a745;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .visit-customer {
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .visit-type {
+            font-size: 10px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .no-visits {
+            color: #999;
+            font-style: italic;
+            font-size: 12px;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .results-container {
+            display: none;
+        }
+        
+        @media (max-width: 1200px) {
+            .days-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .day-column {
+                border-bottom: 2px solid #e1e1e1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>گزارش هفتگی ویزیت مشتریان</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('index') }}">داشبورد</a>
+                <a href="{{ url_for('all_reports') }}">گزارشات</a>
+                <a href="{{ url_for('logout') }}">خروج</a>
+            </div>
+        </div>
+        
+        <div class="welcome-header">
+            <h2>گزارش تفصیلی ویزیت به تفکیک هفته و روز</h2>
+            <p>مشاهده مشتریان ویزیت شده در هر روز هفته با ساعت دقیق</p>
+        </div>
+        
+        <div class="filter-section">
+            <h3 style="margin-bottom: 20px; color: #333;">فیلترهای گزارش</h3>
+            
+            <div class="filter-row">
+                {% if user.Typev == 'admin' %}
+                <div class="filter-group">
+                    <label>انتخاب بازاریاب:</label>
+                    <select id="bazaryabSelect">
+                        <option value="">در حال بارگذاری...</option>
+                    </select>
+                </div>
+                {% endif %}
+                
+                <div class="filter-group">
+                    <label>انتخاب سال:</label>
+                    <select id="yearSelect">
+                        <option value="1404">1404</option>
+                        <option value="1403">1403</option>
+                        <option value="1402">1402</option>
+                        <option value="1401">1401</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>انتخاب ماه‌ها (چند انتخابی):</label>
+                    <div class="multi-select-container">
+                        <div class="multi-select-display" id="monthsDisplay">
+                            <div class="selected-items" id="selectedMonths">
+                                <span class="placeholder">ماه‌ها را انتخاب کنید...</span>
+                            </div>
+                        </div>
+                        <div class="multi-select-dropdown" id="monthsDropdown">
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_1" value="1">
+                                <label for="month_1">فروردین</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_2" value="2">
+                                <label for="month_2">اردیبهشت</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_3" value="3">
+                                <label for="month_3">خرداد</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_4" value="4">
+                                <label for="month_4">تیر</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_5" value="5">
+                                <label for="month_5">مرداد</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_6" value="6">
+                                <label for="month_6">شهریور</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_7" value="7">
+                                <label for="month_7">مهر</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_8" value="8">
+                                <label for="month_8">آبان</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_9" value="9">
+                                <label for="month_9">آذر</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_10" value="10">
+                                <label for="month_10">دی</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_11" value="11">
+                                <label for="month_11">بهمن</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" id="month_12" value="12">
+                                <label for="month_12">اسفند</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-group">
+                    <button class="btn btn-primary" onclick="loadVisitReport()" id="loadBtn" disabled>
+                        نمایش گزارش
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <h3>در حال بارگذاری گزارش...</h3>
+            <p>لطفاً منتظر بمانید</p>
+        </div>
+        
+        <div class="results-container" id="resultsContainer">
+            <!-- نتایج اینجا نمایش داده می‌شود -->
+        </div>
+    </div>
+
+    <script>
+        const monthNames = [
+            '', 'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        ];
+        
+        const dayNames = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'];
+        
+        let selectedMonths = [];
+        let isAdmin = {{ 'true' if user.Typev == 'admin' else 'false' }};
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            setupMultiSelect();
+            
+            if (isAdmin) {
+                loadBazaryabs();
+            } else {
+                document.getElementById('loadBtn').disabled = false;
+            }
+            
+            // تنظیم سال جاری
+            const currentYear = new Date().toLocaleDateString('fa-IR', {year: 'numeric'});
+            document.getElementById('yearSelect').value = currentYear.substring(0, 4);
+        });
+        
+        function setupMultiSelect() {
+            const display = document.getElementById('monthsDisplay');
+            const dropdown = document.getElementById('monthsDropdown');
+            
+            // باز/بسته کردن dropdown
+            display.addEventListener('click', function(e) {
+                if (!e.target.classList.contains('remove')) {
+                    dropdown.classList.toggle('open');
+                    display.classList.toggle('open');
+                }
+            });
+            
+            // بستن dropdown با کلیک بیرون
+            document.addEventListener('click', function(e) {
+                if (!display.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                    display.classList.remove('open');
+                }
+            });
+            
+            // رویداد checkbox ها
+            document.querySelectorAll('#monthsDropdown input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    toggleMonthSelection(parseInt(this.value), this.checked);
+                });
+            });
+        }
+        
+        function toggleMonthSelection(monthNum, isSelected) {
+            if (isSelected) {
+                if (!selectedMonths.includes(monthNum)) {
+                    selectedMonths.push(monthNum);
+                }
+            } else {
+                selectedMonths = selectedMonths.filter(m => m !== monthNum);
+            }
+            
+            // مرتب‌سازی
+            selectedMonths.sort((a, b) => a - b);
+            
+            updateSelectedDisplay();
+            document.getElementById('loadBtn').disabled = selectedMonths.length === 0;
+        }
+        
+        function updateSelectedDisplay() {
+            const selectedDiv = document.getElementById('selectedMonths');
+            
+            if (selectedMonths.length === 0) {
+                selectedDiv.innerHTML = '<span class="placeholder">ماه‌ها را انتخاب کنید...</span>';
+            } else {
+                selectedDiv.innerHTML = selectedMonths.map(monthNum => `
+                    <div class="selected-item">
+                        <span>${monthNames[monthNum]}</span>
+                        <span class="remove" onclick="removeMonth(${monthNum})">×</span>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function removeMonth(monthNum) {
+            event.stopPropagation();
+            
+            selectedMonths = selectedMonths.filter(m => m !== monthNum);
+            
+            const checkbox = document.getElementById(`month_${monthNum}`);
+            if (checkbox) {
+                checkbox.checked = false;
+            }
+            
+            updateSelectedDisplay();
+            document.getElementById('loadBtn').disabled = selectedMonths.length === 0;
+        }
+        
+        function loadBazaryabs() {
+            fetch('/get_users_list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('خطا در بارگذاری بازاریابان');
+                        return;
+                    }
+                    
+                    const select = document.getElementById('bazaryabSelect');
+                    select.innerHTML = '<option value="">همه بازاریابان</option>';
+                    
+                    data.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.Codev;
+                        option.textContent = user.Namev;
+                        select.appendChild(option);
+                    });
+                    
+                    document.getElementById('loadBtn').disabled = false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در بارگذاری لیست بازاریابان');
+                });
+        }
+        
+        function loadVisitReport() {
+            if (selectedMonths.length === 0) {
+                alert('لطفاً حداقل یک ماه انتخاب کنید');
+                return;
+            }
+            
+            const year = document.getElementById('yearSelect').value;
+            const months = selectedMonths.join(',');
+            
+            let url = `/get_weekly_visit_report?year=${year}&months=${months}`;
+            
+            if (isAdmin) {
+                const bazaryabCode = document.getElementById('bazaryabSelect').value;
+                if (bazaryabCode) {
+                    url += `&bazaryab_code=${bazaryabCode}`;
+                }
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultsContainer').style.display = 'none';
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('خطا: ' + data.error);
+                        return;
+                    }
+                    
+                    displayVisitReport(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('خطا در بارگذاری گزارش');
+                })
+                .finally(() => {
+                    document.getElementById('loading').style.display = 'none';
+                });
+        }
+        
+        function displayVisitReport(data) {
+            const container = document.getElementById('resultsContainer');
+            
+            // آمار کلی
+            const summaryHtml = `
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="summary-number">${data.summary.total_visits}</div>
+                        <div class="summary-label">کل ویزیت‌ها</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number">${data.summary.unique_customers}</div>
+                        <div class="summary-label">مشتریان ویزیت شده</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number">${data.summary.total_weeks}</div>
+                        <div class="summary-label">تعداد هفته‌ها</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number">${data.summary.avg_visits_per_week}</div>
+                        <div class="summary-label">میانگین ویزیت هفتگی</div>
+                    </div>
+                </div>
+            `;
+            
+            // ماه‌ها
+            let monthsHtml = '';
+            
+            data.months.forEach(month => {
+                let weeksHtml = '';
+                
+                month.weeks.forEach(week => {
+                    const daysGridHtml = `
+                        <div class="days-grid">
+                            ${week.days.map(day => `
+                                <div class="day-column">
+                                    <div class="day-header">${day.day_name}</div>
+                                    <div class="day-date">
+                                        ${day.is_next_month ? '<span class="next-month-badge">ماه بعد</span>' : ''}
+                                        ${day.date}
+                                    </div>
+                                    ${day.visits.length > 0 ? `
+                                        <div class="visit-list">
+                                            ${day.visits.map(visit => `
+                                                <div class="visit-item">
+                                                    <div class="visit-time">⏰ ${visit.time}</div>
+                                                    <div class="visit-customer">${visit.customer_name}</div>
+                                                    <div class="visit-type">${visit.visit_type}</div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    ` : '<div class="no-visits">ویزیتی نداشته</div>'}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    
+                    weeksHtml += `
+                        <div class="week-section">
+                            <div class="week-header">
+                                <div class="week-title">${week.week_name}</div>
+                                <div class="week-stats">
+                                    <div>${week.week_visits} ویزیت</div>
+                                </div>
+                            </div>
+                            ${daysGridHtml}
+                        </div>
+                    `;
+                });
+                
+                monthsHtml += `
+                    <div class="month-section">
+                        <div class="month-header">
+                            ${month.month_name} - ${month.month_visits} ویزیت
+                        </div>
+                        <div class="week-container">
+                            ${weeksHtml}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = summaryHtml + monthsHtml;
+            container.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

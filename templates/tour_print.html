@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>چاپ لیست تور {{ tour.TourCode }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Times New Roman', serif;
+            background: white;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .print-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 40px;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #333;
+            padding-bottom: 20px;
+        }
+
+        .company-logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .tour-title {
+            font-size: 24px;
+            color: #34495e;
+            margin-bottom: 20px;
+        }
+
+        .tour-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .customers-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .customer-card {
+            border: 2px solid #333;
+            padding: 15px;
+            text-align: center;
+            background: #fff;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .customer-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .customer-code {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .visit-checkbox {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #333;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .instructions {
+            background: #e8f4f8;
+            padding: 20px;
+            border-right: 5px solid #3498db;
+            margin-bottom: 30px;
+        }
+
+        .instructions h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding-right: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            position: relative;
+        }
+
+        .instructions li:before {
+            content: "✓";
+            position: absolute;
+            right: -20px;
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .signature-section {
+            margin-top: 50px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .signature-box {
+            text-align: center;
+            border-top: 2px solid #333;
+            padding-top: 10px;
+        }
+
+        .signature-label {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .page-footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #7f8c8d;
+            border-top: 1px solid #bdc3c7;
+            padding-top: 15px;
+        }
+
+        .no-print {
+            background: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            margin: 0 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                background: white;
+            }
+            
+            .print-container {
+                box-shadow: none;
+                margin: 0;
+                padding: 20px;
+            }
+            
+            .customers-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+            }
+            
+            .customer-card {
+                min-height: 100px;
+                padding: 10px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .customers-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .tour-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .signature-section {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <div style="text-align: center;">
+            <h2>پیش‌نمایش چاپ تور {{ tour.TourCode }}</h2>
+            <button onclick="window.print()" class="btn btn-primary">🖨️ چاپ</button>
+            <a href="{{ url_for('visit_management') }}" class="btn btn-secondary">بازگشت</a>
+            <button onclick="markAsReceived()" class="btn btn-success">✅ تحویل داده شد</button>
+        </div>
+    </div>
+
+    <div class="print-container">
+        <div class="header">
+            <div class="company-logo">شرکت داروپخش</div>
+            <div class="tour-title">لیست ویزیت تور {{ tour.TourNumber }}</div>
+        </div>
+
+        <div class="tour-info">
+            <div>
+                <div class="info-item">
+                    <span class="info-label">کد تور:</span>
+                    <span>{{ tour.TourCode }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">تاریخ تور:</span>
+                    <span>{{ tour.TourDate }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">نام بازاریاب:</span>
+                    <span>{{ bazaryab_name }}</span>
+                </div>
+            </div>
+            <div>
+                <div class="info-item">
+                    <span class="info-label">تعداد مشتریان:</span>
+                    <span>{{ customers|length }} داروخانه</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">تاریخ چاپ:</span>
+                    <span>{{ printed_date }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">وضعیت:</span>
+                    <span>{{ tour.Status }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>دستورالعمل اجرای تور:</h3>
+            <ul>
+                <li>به هر داروخانه مراجعه کرده و فعالیت‌های لازم را انجام دهید</li>
+                <li>در صورت مراجعه، روی نام داروخانه مهر بزنید یا علامت ✓ بگذارید</li>
+                <li>در صورت عدم مراجعه، دلیل را در قسمت یادداشت بنویسید</li>
+                <li>لیست تکمیل شده را تا پایان روز تحویل دهید</li>
+            </ul>
+        </div>
+
+        <h3 style="text-align: center; margin-bottom: 20px; color: #2c3e50;">
+            لیست داروخانه‌های تور ({{ customers|length }} داروخانه)
+        </h3>
+
+        <div class="customers-grid">
+            {% for customer in customers %}
+            <div class="customer-card">
+                <div class="customer-name">{{ customer.CustomerName }}</div>
+                <div class="customer-code">کد: {{ customer.CustomerCode }}</div>
+                <div class="visit-checkbox">☐</div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div style="background: #fff3cd; padding: 15px; margin: 20px 0; border: 1px solid #ffeaa7; border-radius: 5px;">
+            <strong>یادداشت‌ها:</strong>
+            <div style="min-height: 80px; border: 1px solid #ddd; margin-top: 10px; padding: 10px;">
+                <!-- فضای خالی برای یادداشت دستی -->
+            </div>
+        </div>
+
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-label">امضای بازاریاب</div>
+                <div style="margin-top: 20px;">{{ bazaryab_name }}</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-label">تاریخ و ساعت تحویل</div>
+                <div style="margin-top: 20px;">_______________</div>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            این برگه پس از تکمیل باید به واحد مدیریت ویزیت تحویل داده شود<br>
+            کد تور: {{ tour.TourCode }} | تاریخ چاپ: {{ printed_date }}
+        </div>
+    </div>
+
+    <script>
+        async function markAsReceived() {
+            if (confirm('آیا این تور به بازاریاب تحویل داده شد؟')) {
+                try {
+                    const response = await fetch('/mark_tour_received', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            tour_code: '{{ tour.TourCode }}'
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('تور با موفقیت به عنوان تحویل داده شده ثبت شد');
+                        window.location.href = '{{ url_for("visit_management") }}';
+                    } else {
+                        alert('خطا: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('خطا:', error);
+                    alert('خطا در ثبت تحویل تور');
+                }
+            }
+        }
+
+        // Auto print on mobile devices
+        if (window.innerWidth <= 768) {
+            setTimeout(() => {
+                if (confirm('آیا می‌خواهید این صفحه را چاپ کنید؟')) {
+                    window.print();
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
