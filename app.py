@@ -6331,7 +6331,438 @@ def generate_weekly_sales_report(sales_df, year):
                 'total_weeks': 0
             },
             'months': []
-        }        
+        }
+@app.route('/weekly_visit_report')
+def weekly_visit_report():
+    """صفحه گزارش هفتگی ویزیت"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    return render_template('weekly_visit_report.html', user=session['user_info'])
+
+@app.route('/get_weekly_visit_report')
+def get_weekly_visit_report():
+    """دریافت گزارش هفتگی ویزیت مشتریان"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        # دریافت پارامترها
+        year = int(request.args.get('year', 1404))
+        months_str = request.args.get('months', '')
+        bazaryab_code = request.args.get('bazaryab_code', '')
+        
+        if not months_str:
+            return jsonify({'error': 'لطفاً حداقل یک ماه انتخاب کنید'}), 400
+        
+        # تبدیل ماه‌ها به لیست
+        selected_months = [int(m) for m in months_str.split(',') if m.strip()]
+        
+        if not selected_months:
+            return jsonify({'error': 'ماه‌های انتخابی نامعتبر است'}), 400
+        
+        print(f"📊 Weekly visit report: Year {year}, Months: {selected_months}")
+        
+        # بارگذاری داده‌ها
+        reports_df = load_reports_from_excel()
+        customers_df = load_customers_from_excel()
+        users_df = load_users_from_excel()
+        
+        if reports_df is None or reports_df.empty:
+            return jsonify({'error': 'داده‌های ویزیت یافت نشد'}), 404
+        
+        # فیلتر بر اساس کاربر
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        # اگر ادمین است و بازاریاب خاصی انتخاب کرده
+        if user_type == 'admin' and bazaryab_code:
+            filtered_reports = reports_df[reports_df['BazaryabCode'] == bazaryab_code]
+        elif user_type == 'admin':
+            filtered_reports = reports_df
+        else:
+            filtered_reports = reports_df[reports_df['BazaryabCode'] == user_code]
+        
+        # تولید گزارش
+        visit_report = generate_weekly_visit_report(
+            filtered_reports, customers_df, year, selected_months
+        )
+        
+        return jsonify(visit_report)
+        
+    except Exception as e:
+        print(f"❌ Error in get_weekly_visit_report: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
+
+def generate_weekly_visit_report(reports_df, customers_df, year, selected_months):
+    """تولید گزارش هفتگی ویزیت - هر هفته از شنبه شروع می‌شود"""
+    try:
+        month_names = [
+            '', 'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+            'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'
+        ]
+        
+        day_names = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه']
+        
+        # تبدیل تاریخ‌های ویزیت
+        def parse_visit_date(date_value):
+            if pd.isna(date_value):
+                return None
+            
+            date_str = str(date_value).strip()
+            
+            try:
+                if '/' in date_str and len(date_str.split('/')) == 3:
+                    parts = date_str.split('/')
+                    return jdatetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+                elif '-' in date_str and len(date_str) >= 10:
+                    # اگر datetime است، فقط تاریخ را بگیر
+                    date_part = date_str[:10]
+                    gregorian_date = datetime.strptime(date_part, '%Y-%m-%d').date()
+                    return jdatetime.date.fromgregorian(date=gregorian_date)
+            except:
+                return None
+            
+            return None
+        
+        # تبدیل زمان ویزیت
+        def parse_visit_time(time_value):
+            if pd.isna(time_value):
+                return "نامشخص"
+            
+            try:
+                time_str = str(time_value).strip()
+                
+                # اگر datetime است
+                if isinstance(time_value, datetime):
+                    return time_value.strftime('%H:%M')
+                
+                # اگر time است
+                if hasattr(time_value, 'hour'):
+                    return f"{time_value.hour:02d}:{time_value.minute:02d}"
+                
+                # اگر string است
+                if ':' in time_str:
+                    parts = time_str.split(':')
+                    if len(parts) >= 2:
+                        return f"{parts[0].zfill(2)}:{parts[1].zfill(2)}"
+                
+                return "نامشخص"
+            except:
+                return "نامشخص"
+        
+        reports_df['ParsedDate'] = reports_df['VisitDate'].apply(parse_visit_date)
+        reports_df['ParsedTime'] = reports_df['VisitTime'].apply(parse_visit_time)
+        
+        # فیلتر گزارش‌های سال و ماه‌های مورد نظر
+        filtered_reports = reports_df[
+            (reports_df['ParsedDate'].notna()) &
+            (reports_df['ParsedDate'].apply(lambda x: x.year if x else 0) == year) &
+            (reports_df['ParsedDate'].apply(lambda x: x.month if x else 0).isin(selected_months))
+        ].copy()
+        
+        print(f"   Found {len(filtered_reports)} visits for year {year}, months {selected_months}")
+        
+        if filtered_reports.empty:
+            return {
+                'summary': {
+                    'total_visits': 0,
+                    'unique_customers': 0,
+                    'total_weeks': 0,
+                    'avg_visits_per_week': 0
+                },
+                'months': []
+            }
+        
+        # محاسبه آمار کلی
+        total_visits = len(filtered_reports)
+        unique_customers = filtered_reports['CustomerCode'].nunique()
+        
+        # تولید گزارش ماه به ماه
+        months_data = []
+        total_weeks = 0
+        
+        for month_num in selected_months:
+            month_name = month_names[month_num]
+            
+            # گزارش‌های این ماه
+            month_reports = filtered_reports[
+                filtered_reports['ParsedDate'].apply(lambda x: x.month if x else 0) == month_num
+            ].copy()
+            
+            if month_reports.empty:
+                continue
+            
+            month_visits = len(month_reports)
+            
+            # تعیین تعداد روزهای ماه
+            days_in_month = 31 if month_num <= 6 else 30
+            if month_num == 12:
+                try:
+                    jdatetime.date(year, 12, 30)
+                    days_in_month = 30
+                except:
+                    days_in_month = 29
+            
+            # پیدا کردن اولین شنبه ماه
+            first_saturday = None
+            for day in range(1, days_in_month + 1):
+                try:
+                    current_date = jdatetime.date(year, month_num, day)
+                    if current_date.weekday() == 0:
+                        first_saturday = day
+                        break
+                except:
+                    continue
+            
+            if first_saturday is None:
+                continue
+            
+            # تقسیم به هفته‌ها
+            weeks_data = []
+            week_num = 1
+            current_day = first_saturday
+            
+            while current_day <= days_in_month:
+                week_name = f"هفته {week_num}"
+                week_days = []
+                week_visits = 0
+                
+                for day_offset in range(7):
+                    day = current_day + day_offset
+                    
+                    try:
+                        if day <= days_in_month:
+                            current_date = jdatetime.date(year, month_num, day)
+                            is_next_month = False
+                        else:
+                            next_month = month_num + 1 if month_num < 12 else 1
+                            next_year = year if month_num < 12 else year + 1
+                            next_month_day = day - days_in_month
+                            
+                            try:
+                                current_date = jdatetime.date(next_year, next_month, next_month_day)
+                                is_next_month = True
+                            except:
+                                break
+                        
+                        day_of_week = current_date.weekday()
+                        day_name = day_names[day_of_week]
+                        
+                        # ویزیت‌های این روز
+                        day_reports = filtered_reports[
+                            filtered_reports['ParsedDate'] == current_date
+                        ]
+                        
+                        visits_list = []
+                        for _, report in day_reports.iterrows():
+                            customer_name = "نامشخص"
+                            customer_code = report.get('CustomerCode', '')
+                            
+                            if customer_code and customers_df is not None:
+                                customer_row = customers_df[customers_df['CustomerCode'] == customer_code]
+                                if not customer_row.empty:
+                                    customer_name = str(customer_row.iloc[0]['CustomerName'])
+                            
+                            visit_type = report.get('VisitType', 'نامشخص')
+                            if pd.isna(visit_type) or visit_type == '':
+                                visit_type = 'نامشخص'
+                            
+                            visits_list.append({
+                                'time': report['ParsedTime'],
+                                'customer_name': customer_name,
+                                'visit_type': str(visit_type)
+                            })
+                        
+                        # مرتب‌سازی بر اساس زمان
+                        visits_list.sort(key=lambda x: x['time'])
+                        
+                        week_visits += len(visits_list)
+                        
+                        week_days.append({
+                            'day_name': day_name,
+                            'date': current_date.strftime('%Y/%m/%d'),
+                            'is_next_month': is_next_month,
+                            'visits': visits_list
+                        })
+                        
+                    except Exception as e:
+                        print(f"   Error processing day {day}: {e}")
+                        break
+                
+                if week_days:
+                    weeks_data.append({
+                        'week_name': week_name,
+                        'week_visits': week_visits,
+                        'days': week_days
+                    })
+                    week_num += 1
+                    total_weeks += 1
+                
+                current_day += 7
+            
+            if weeks_data:
+                months_data.append({
+                    'month_name': month_name,
+                    'month_visits': month_visits,
+                    'weeks': weeks_data
+                })
+        
+        avg_visits_per_week = round(total_visits / total_weeks, 1) if total_weeks > 0 else 0
+        
+        print(f"   ✅ Report generated: {total_weeks} weeks, {total_visits} visits")
+        
+        return {
+            'summary': {
+                'total_visits': total_visits,
+                'unique_customers': unique_customers,
+                'total_weeks': total_weeks,
+                'avg_visits_per_week': avg_visits_per_week
+            },
+            'months': months_data
+        }
+        
+    except Exception as e:
+        print(f"❌ Error in generate_weekly_visit_report: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'summary': {
+                'total_visits': 0,
+                'unique_customers': 0,
+                'total_weeks': 0,
+                'avg_visits_per_week': 0
+            },
+            'months': []
+        }
+        
+@app.route('/get_reports_data')
+def get_reports_data():
+    """دریافت داده‌های گزارش مراجعات"""
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': 'لطفاً وارد شوید'}), 401
+        
+        # بارگذاری داده‌ها
+        customers_df = load_customers_from_excel()
+        reports_df = load_reports_from_excel()
+        users_df = load_users_from_excel()
+        
+        if customers_df is None:
+            return jsonify({'error': 'خطا در بارگذاری مشتریان'}), 500
+        
+        # فیلتر بر اساس کاربر
+        user_code = session['user_info']['Codev']
+        user_type = session['user_info']['Typev']
+        
+        if user_type != 'admin':
+            my_customers = customers_df[customers_df['BazaryabCode'] == user_code]
+        else:
+            my_customers = customers_df
+        
+        # تبدیل به لیست
+        customers_list = []
+        for _, customer in my_customers.iterrows():
+            customers_list.append({
+                'CustomerCode': str(customer['CustomerCode']),
+                'CustomerName': str(customer['CustomerName']),
+                'LocationSet': bool(customer.get('LocationSet', False))
+            })
+        
+        # بارگذاری گزارش‌ها
+        reports_list = []
+        if reports_df is not None and not reports_df.empty:
+            if user_type != 'admin':
+                my_reports = reports_df[reports_df['BazaryabCode'] == user_code]
+            else:
+                my_reports = reports_df
+            
+            for _, report in my_reports.iterrows():
+                # تبدیل تاریخ به شمسی
+                visit_date = report.get('VisitDate', '')
+                
+                if pd.notna(visit_date):
+                    date_str = str(visit_date).strip()
+                    # اگر میلادی است، تبدیل به شمسی
+                    if '-' in date_str and len(date_str) >= 10:
+                        jalali_date = gregorian_to_jalali(date_str[:10])
+                    else:
+                        jalali_date = date_str
+                else:
+                    jalali_date = ''
+                
+                # زمان ویزیت
+                visit_time = report.get('VisitTime', '')
+                if pd.notna(visit_time):
+                    time_str = str(visit_time).strip()
+                else:
+                    time_str = ''
+                
+                # یافتن نام مشتری
+                customer_name = ''
+                customer_code = report.get('CustomerCode', '')
+                if customer_code:
+                    customer_row = customers_df[customers_df['CustomerCode'] == customer_code]
+                    if not customer_row.empty:
+                        customer_name = customer_row.iloc[0]['CustomerName']
+                
+                # یافتن نام بازاریاب
+                bazaryab_name = ''
+                bazaryab_code = report.get('BazaryabCode', '')
+                if bazaryab_code and users_df is not None:
+                    user_row = users_df[users_df['Codev'] == bazaryab_code]
+                    if not user_row.empty:
+                        bazaryab_name = user_row.iloc[0]['Namev']
+                
+                # نوع ویزیت
+                visit_type = report.get('VisitType', '')
+                if pd.isna(visit_type):
+                    visit_type = 'نامشخص'
+                
+                reports_list.append({
+                    'ReportCode': str(report.get('VisitCode', '')),
+                    'CustomerCode': str(customer_code),
+                    'CustomerName': customer_name,
+                    'BazaryabCode': str(bazaryab_code),
+                    'BazaryabName': bazaryab_name,
+                    'VisitDate': jalali_date,
+                    'VisitTime': time_str,
+                    'VisitType': str(visit_type),
+                    'Description': str(report.get('Description', '')),
+                    'NextFollowUp': str(report.get('NextFollowUp', '')) if pd.notna(report.get('NextFollowUp', '')) else ''
+                })
+        
+        return jsonify({
+            'customers': customers_list,
+            'reports': reports_list
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in get_reports_data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500 
+ 
+def load_reports_from_excel():
+    """بارگذاری گزارشات ویزیت از فایل اکسل"""
+    try:
+        reports_file = os.path.join(app.config['UPLOAD_FOLDER'], 'visits.xlsx')
+        
+        if not os.path.exists(reports_file):
+            print(f"⚠️ Visits file not found: {reports_file}")
+            return None
+        
+        df = pd.read_excel(reports_file)
+        print(f"✅ Visits loaded: {len(df)} records")
+        return df
+        
+    except Exception as e:
+        print(f"❌ Error loading visits: {e}")
+        import traceback
+        traceback.print_exc()
+        return None        
 # اضافه کردن requests به requirements اگر نداری
 # pip install requests
 # ===============================
