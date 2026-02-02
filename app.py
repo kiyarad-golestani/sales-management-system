@@ -6,12 +6,15 @@ import jdatetime
 import requests
 import json
 import numpy as np
+import pandas as pd
+
 
 import openpyxl
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from datetime import timedelta
 from math import radians, sin, cos, sqrt, atan2
 from pytz import timezone as pytz_timezone
+from collections import defaultdict
 
 
 app = Flask(__name__)
@@ -22,6 +25,8 @@ USERS_FILE = 'users.xlsx'
 CUSTOMERS_FILE = 'customers.xlsx'
 VISITS_FILE = 'visits.xlsx'
 EXAMS_FILE = 'azmon.xlsx'  # ← این خط را اضافه کنید
+MESSAGES_FILE = 'messages.xlsx'
+USER_STATUS_FILE = 'user_status.xlsx'
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """محاسبه فاصله بین دو نقطه جغرافیایی به متر (فرمول Haversine)"""
@@ -297,6 +302,192 @@ def load_customers_from_excel():
     except Exception as e:
         print("❌ Error loading customers file:", e)
         return None
+
+def filter_duplicate_products(products_df):
+    """
+    فیلتر کردن محصولات تکراری (رسمی و غیررسمی)
+    
+    فرمت کدها:
+    - رسمی: P991234 (P + 99 + کد پایه)
+    - غیررسمی: P1234 (P + کد پایه)
+    
+    منطق:
+    1. استخراج کد پایه (بدون P و بدون 99)
+    2. اگر یکی موجودی داشت → آن را نشان بده
+    3. اگر هر دو موجودی داشتند یا نداشتند → گران‌تر را نشان بده
+    """
+    
+    if products_df.empty:
+        return products_df
+    
+    print("\n" + "="*70)
+    print("🔍 شروع فیلتر محصولات تکراری (فرمت P99...)")
+    print("="*70)
+    
+    # تبدیل کد محصول به string و پاک کردن فضاهای خالی
+    products_df = products_df.copy()
+    products_df['ProductCode'] = products_df['ProductCode'].astype(str).str.strip().str.upper()
+    products_df['Price'] = pd.to_numeric(products_df['Price'], errors='coerce').fillna(0)
+    products_df['Stock'] = pd.to_numeric(products_df['Stock'], errors='coerce').fillna(0)
+    
+    # دیکشنری برای ذخیره محصولات بر اساس کد پایه
+    products_by_base = {}
+    
+    for idx, row in products_df.iterrows():
+        code = str(row['ProductCode']).strip().upper()
+        
+        # بررسی فرمت کد
+        if not code.startswith('P'):
+            # کدی که با P شروع نمی‌شود - نگه دار
+            products_by_base[code] = {
+                'single': {
+                    'index': idx,
+                    'code': code,
+                    'price': float(row['Price']),
+                    'stock': float(row['Stock']),
+                    'row': row
+                }
+            }
+            continue
+        
+        # حذف P از ابتدا
+        code_without_p = code[1:]  # حذف P
+        
+        # تشخیص رسمی یا غیررسمی
+        if code_without_p.startswith('99') and len(code_without_p) > 2:
+            # کد رسمی (P99...)
+            base_code = code_without_p[2:]  # حذف 99
+            product_type = 'official'
+        else:
+            # کد غیررسمی (P...)
+            base_code = code_without_p
+            product_type = 'unofficial'
+        
+        # ذخیره محصول
+        if base_code not in products_by_base:
+            products_by_base[base_code] = {}
+        
+        products_by_base[base_code][product_type] = {
+            'index': idx,
+            'code': code,
+            'price': float(row['Price']),
+            'stock': float(row['Stock']),
+            'row': row
+        }
+    
+    print(f"\n📊 آمار محصولات:")
+    total_official = sum(1 for p in products_by_base.values() if 'official' in p)
+    total_unofficial = sum(1 for p in products_by_base.values() if 'unofficial' in p)
+    total_single = sum(1 for p in products_by_base.values() if 'single' in p)
+    total_duplicates = sum(1 for p in products_by_base.values() if 'official' in p and 'unofficial' in p)
+    
+    print(f"   کدهای پایه یکتا: {len(products_by_base)}")
+    print(f"   دارای نسخه رسمی: {total_official}")
+    print(f"   دارای نسخه غیررسمی: {total_unofficial}")
+    print(f"   کدهای منحصر به فرد: {total_single}")
+    print(f"   محصولات تکراری (هر دو نسخه): {total_duplicates}")
+    
+    # انتخاب محصولات نهایی
+    duplicates_found = 0
+    indices_to_keep = []
+    
+    for base_code, versions in products_by_base.items():
+        
+        # اگر کد منحصر به فرد است (نه رسمی نه غیررسمی)
+        if 'single' in versions:
+            indices_to_keep.append(versions['single']['index'])
+            continue
+        
+        # اگر هر دو نسخه (رسمی و غیررسمی) دارد
+        if 'official' in versions and 'unofficial' in versions:
+            duplicates_found += 1
+            
+            official = versions['official']
+            unofficial = versions['unofficial']
+            
+            print(f"\n🔄 محصول تکراری پیدا شد:")
+            print(f"   کد پایه: {base_code}")
+            print(f"   ├─ رسمی (P99{base_code}):")
+            print(f"   │  ├─ کد کامل: {official['code']}")
+            print(f"   │  ├─ قیمت: {official['price']:,.0f} ریال")
+            print(f"   │  └─ موجودی: {official['stock']:.0f}")
+            print(f"   └─ غیررسمی (P{base_code}):")
+            print(f"      ├─ کد کامل: {unofficial['code']}")
+            print(f"      ├─ قیمت: {unofficial['price']:,.0f} ریال")
+            print(f"      └─ موجودی: {unofficial['stock']:.0f}")
+            
+            # تصمیم‌گیری: کدام را نگه داریم؟
+            keep_official = False
+            reason = ""
+            
+            # قانون 1: اگر فقط یکی موجودی دارد
+            if official['stock'] > 0 and unofficial['stock'] == 0:
+                keep_official = True
+                reason = "فقط رسمی موجودی دارد"
+            elif unofficial['stock'] > 0 and official['stock'] == 0:
+                keep_official = False
+                reason = "فقط غیررسمی موجودی دارد"
+            
+            # قانون 2: هر دو موجودی دارند یا ندارند → گران‌تر را نگه دار
+            else:
+                if official['price'] >= unofficial['price']:
+                    keep_official = True
+                    reason = f"رسمی گران‌تر است ({official['price']:,.0f} >= {unofficial['price']:,.0f})"
+                else:
+                    keep_official = False
+                    reason = f"غیررسمی گران‌تر است ({unofficial['price']:,.0f} > {official['price']:,.0f})"
+            
+            # اعمال تصمیم
+            if keep_official:
+                indices_to_keep.append(official['index'])
+                print(f"   ✅ تصمیم: رسمی ({official['code']}) نگه داشته می‌شود - {reason}")
+            else:
+                indices_to_keep.append(unofficial['index'])
+                print(f"   ✅ تصمیم: غیررسمی ({unofficial['code']}) نگه داشته می‌شود - {reason}")
+        
+        # اگر فقط یک نسخه دارد
+        elif 'official' in versions:
+            # فقط رسمی دارد
+            indices_to_keep.append(versions['official']['index'])
+            print(f"   ℹ️  فقط رسمی: P99{base_code}")
+        elif 'unofficial' in versions:
+            # فقط غیررسمی دارد
+            indices_to_keep.append(versions['unofficial']['index'])
+            print(f"   ℹ️  فقط غیررسمی: P{base_code}")
+    
+    # فیلتر کردن DataFrame
+    filtered_df = products_df.loc[indices_to_keep].copy()
+    
+    print(f"\n" + "="*70)
+    print(f"📊 نتیجه فیلتر:")
+    print(f"   تعداد کل محصولات: {len(products_df)}")
+    print(f"   محصولات تکراری (دارای هر دو نسخه): {duplicates_found}")
+    print(f"   محصولات حذف شده: {len(products_df) - len(filtered_df)}")
+    print(f"   محصولات نهایی: {len(filtered_df)}")
+    print("="*70 + "\n")
+    
+    return filtered_df
+
+
+def load_products_with_filter():
+    """
+    بارگذاری محصولات با فیلتر خودکار تکراری‌ها
+    جایگزین تابع load_products_from_excel موجود
+    """
+    try:
+        # بارگذاری محصولات
+        products_df = pd.read_excel('products.xlsx', sheet_name='products')
+        
+        # اعمال فیلتر
+        filtered_df = filter_duplicate_products(products_df)
+        
+        return filtered_df
+        
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری محصولات: {e}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame()
 
 def load_visits_from_excel():
     """بارگذاری مراجعات از فایل Excel"""
@@ -1350,67 +1541,279 @@ def catalog():
 
 @app.route('/get_catalog_data')
 def get_catalog_data():
-    """دریافت داده‌های کاتالوگ"""
+    """دریافت داده‌های کاتالوگ - با فیلتر محصولات تکراری و قیمت بدون اعشار"""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
-    # بارگذاری داده‌ها
-    products_df = load_products_from_excel()
-    customers_df = load_customers_from_excel()
-    
-    if products_df is None or customers_df is None:
-        return jsonify({'error': 'Failed to load data'}), 500
-    
-    # فیلتر مشتریان بر اساس بازاریاب
-    bazaryab_code = session['user_info']['Codev']
-    if session['user_info']['Typev'] != 'admin':
-        my_customers = customers_df[customers_df['BazaryabCode'] == bazaryab_code]
-    else:
-        my_customers = customers_df
-    
-    # تنظیم کالاها بر اساس برند
-    brands = {}
-    for _, product in products_df.iterrows():
-        brand = product['Brand']
-        if brand not in brands:
-            brands[brand] = []
+    try:
+        # بارگذاری محصولات با فیلتر
+        products_df = load_products_with_filter()
+        customers_df = load_customers_from_excel()
         
-        # بررسی وجود عکس
-        image_path = f"static/images/{product['ImageFile']}"
-        if not os.path.exists(image_path):
-            image_file = "null.jpg"
+        if products_df is None or products_df.empty:
+            return jsonify({'error': 'محصولی یافت نشد'}), 500
+        
+        if customers_df is None:
+            return jsonify({'error': 'Failed to load customers'}), 500
+        
+        # فیلتر مشتریان بر اساس بازاریاب
+        bazaryab_code = session['user_info']['Codev']
+        if session['user_info']['Typev'] != 'admin':
+            my_customers = customers_df[customers_df['BazaryabCode'] == bazaryab_code]
         else:
-            image_file = product['ImageFile']
+            my_customers = customers_df
         
-        brands[brand].append({
-            'ProductCode': product['ProductCode'],
-            'ProductName': product['ProductName'],
-            'Category': product['Category'],
-            'Brand': product['Brand'],
-            'Price': product['Price'],
-            'Stock': product['Stock'],
-            'ImageFile': image_file,
-            'Description': product['Description'],
-            'Offer1': product['Offer1'],
-            'Offer2': product['Offer2'],
-            'Offer3': product['Offer3'],
-            'radif': product.get('radif', product.get('Radif', product.get('RADIF', 999999)))
+        # تنظیم کالاها بر اساس برند
+        brands = {}
+        
+        for _, product in products_df.iterrows():
+            brand = str(product.get('Brand', 'نامشخص'))
+            
+            if brand not in brands:
+                brands[brand] = []
+            
+            # بررسی وجود عکس
+            image_file = str(product.get('ImageFile', 'null.jpg'))
+            image_path = f"static/images/{image_file}"
+            if not os.path.exists(image_path):
+                image_file = "null.jpg"
+            
+            # تشخیص اینکه کد رسمی است یا غیررسمی
+            product_code = str(product['ProductCode']).strip().upper()
+            
+            # بررسی فرمت P99...
+            if product_code.startswith('P'):
+                code_without_p = product_code[1:]
+                is_official = code_without_p.startswith('99') and len(code_without_p) > 2
+            else:
+                is_official = product_code.startswith('99')
+            
+            # محاسبه قیمت‌ها
+            base_price = float(product.get('Price', 0))
+            
+            if is_official:
+                # اگر کد رسمی است
+                official_price = base_price
+                unofficial_price = base_price / 1.1  # حذف 10% مالیات
+            else:
+                # اگر کد غیررسمی است
+                unofficial_price = base_price
+                official_price = base_price * 1.1  # اضافه کردن 10% مالیات
+            
+            # ✅ تبدیل به عدد صحیح (بدون اعشار)
+            official_price = int(round(official_price))
+            unofficial_price = int(round(unofficial_price))
+            
+            # موجودی
+            stock = float(product.get('Stock', 0))
+            stock = int(round(stock))  # موجودی هم عدد صحیح
+            
+            brands[brand].append({
+                'ProductCode': product_code,
+                'ProductName': str(product.get('ProductName', '')),
+                'Category': str(product.get('Category', 'عمومی')),
+                'Brand': brand,
+                'Price': official_price,  # ✅ عدد صحیح
+                'UnofficialPrice': unofficial_price,  # ✅ عدد صحیح
+                'Stock': stock,  # ✅ عدد صحیح
+                'OfficialStock': stock if is_official else 0,
+                'UnofficialStock': 0 if is_official else stock,
+                'ImageFile': image_file,
+                'Description': str(product.get('Description', '')),
+                'Offer1': str(product.get('Offer1', '')),
+                'Offer2': str(product.get('Offer2', '')),
+                'Offer3': str(product.get('Offer3', '')),
+                'radif': int(product.get('radif', product.get('Radif', product.get('RADIF', 999999))))
+            })
+        
+        # لیست مشتریان
+        customers_list = []
+        for _, customer in my_customers.iterrows():
+            customers_list.append({
+                'CustomerCode': str(customer['CustomerCode']),
+                'CustomerName': str(customer['CustomerName'])
+            })
+        
+        print(f"✅ کاتالوگ آماده شد: {len(brands)} برند، {len(customers_list)} مشتری")
+        
+        return jsonify({
+            'brands': brands,
+            'customers': customers_list
         })
+        
+    except Exception as e:
+        print(f"❌ خطا در get_catalog_data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'خطای سرور: {str(e)}'}), 500
     
-    # لیست مشتریان
-    customers_list = []
-    for _, customer in my_customers.iterrows():
-        customers_list.append({
-            'CustomerCode': customer['CustomerCode'],
-            'CustomerName': customer['CustomerName']
+   
+def merge_official_unofficial_products(products_df):
+    """
+    ادغام کالاهای رسمی و غیررسمی
+    کالاهای غیررسمی: کدشان با "99" شروع می‌شود
+    
+    برای هر کالا:
+    - موجودی کل = موجودی رسمی + موجودی غیررسمی
+    - قیمت غیررسمی = قیمت رسمی + 10%
+    - فقط کالای رسمی نمایش داده می‌شود
+    """
+    try:
+        # لیست نهایی کالاها
+        merged_products_list = []
+        
+        # کالاهایی که پردازش شده‌اند
+        processed_codes = set()
+        
+        for _, product in products_df.iterrows():
+            product_code = str(product['ProductCode']).strip()
+            
+            # اگر این کالا قبلاً پردازش شده، رد شو
+            if product_code in processed_codes:
+                continue
+            
+            # اگر کد با "99" شروع میشه، غیررسمیه - رد شو چون فقط رسمی رو نمایش میدیم
+            if product_code.startswith('99'):
+                processed_codes.add(product_code)
+                continue
+            
+            # این یک کالای رسمی است
+            official_code = product_code
+            unofficial_code = f"99{product_code}"
+            
+            # پیدا کردن کالای غیررسمی مرتبط
+            unofficial_product = products_df[
+                products_df['ProductCode'].astype(str).str.strip() == unofficial_code
+            ]
+            
+            # محاسبه موجودی
+            official_stock = float(product.get('Stock', 0))
+            unofficial_stock = 0
+            
+            if not unofficial_product.empty:
+                unofficial_stock = float(unofficial_product.iloc[0].get('Stock', 0))
+                processed_codes.add(unofficial_code)  # علامت‌گذاری که پردازش شد
+            
+            total_stock = official_stock + unofficial_stock
+            
+            # محاسبه قیمت
+            official_price = float(product.get('Price', 0))
+            unofficial_price = official_price * 1.1  # قیمت رسمی + 10%
+            
+            # اضافه کردن به لیست
+            merged_product = {
+                'ProductCode': official_code,
+                'ProductName': product['ProductName'],
+                'Category': product['Category'],
+                'Brand': product['Brand'],
+                'Price': official_price,
+                'UnofficialPrice': unofficial_price,
+                'TotalStock': total_stock,
+                'OfficialStock': official_stock,
+                'UnofficialStock': unofficial_stock,
+                'ImageFile': product['ImageFile'],
+                'Description': product['Description'],
+                'Offer1': product.get('Offer1', ''),
+                'Offer2': product.get('Offer2', ''),
+                'Offer3': product.get('Offer3', ''),
+                'radif': product.get('radif', product.get('Radif', product.get('RADIF', 999999)))
+            }
+            
+            merged_products_list.append(merged_product)
+            processed_codes.add(official_code)
+        
+        # تبدیل به DataFrame
+        merged_df = pd.DataFrame(merged_products_list)
+        
+        print(f"✅ Merged {len(merged_df)} products (from {len(products_df)} original)")
+        return merged_df
+        
+    except Exception as e:
+        print(f"❌ Error in merge_official_unofficial_products: {e}")
+        import traceback
+        traceback.print_exc()
+        return products_df  # در صورت خطا، محصولات اصلی رو برگردان
+  
+   
+   # اضافه کردن این route جدید برای دریافت تاریخچه خرید مشتری
+@app.route('/get_customer_purchase_history')
+def get_customer_purchase_history():
+    """دریافت تاریخچه خرید از sales.xlsx"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    customer_code = request.args.get('customer_code')
+    if not customer_code:
+        return jsonify({'error': 'Customer code required'}), 400
+    
+    try:
+        # بارگذاری فروش
+        sales_df = load_sales_from_excel()
+        
+        if sales_df is None or sales_df.empty:
+            return jsonify({'purchased_products': [], 'total_sales': 0})
+        
+        print(f"📊 Total sales records: {len(sales_df)}")
+        
+        # سال جاری
+        today = datetime.now()
+        jalali_today = jdatetime.datetime.fromgregorian(datetime=today)
+        current_year = jalali_today.year
+        
+        print(f"📅 Current year: {current_year}")
+        
+        # فیلتر مشتری
+        sales_df['CustomerCode'] = sales_df['CustomerCode'].astype(str).str.strip()
+        customer_code = str(customer_code).strip()
+        customer_sales = sales_df[sales_df['CustomerCode'] == customer_code]
+        
+        print(f"👤 Customer {customer_code}: {len(customer_sales)} sales")
+        
+        if customer_sales.empty:
+            return jsonify({'purchased_products': [], 'total_sales': 0})
+        
+        # فیلتر سال جاری - تاریخ به فرمت "1403/05/15"
+        current_year_sales = []
+        for _, row in customer_sales.iterrows():
+            try:
+                date_str = str(row['InvoiceDate'])
+                if '/' in date_str:
+                    year = int(date_str.split('/')[0])
+                    if year == current_year:
+                        current_year_sales.append(row)
+            except:
+                pass
+        
+        print(f"📅 Year {current_year}: {len(current_year_sales)} sales")
+        
+        # استخراج کدهای محصول
+        purchased_products = []
+        for sale in current_year_sales:
+            code = str(sale['ProductCode']).strip()
+            
+            # تبدیل P99 به P
+            if code.startswith('P99'):
+                code = 'P' + code[3:]
+                print(f"  🔄 {sale['ProductCode']} -> {code}")
+            
+            if code not in purchased_products:
+                purchased_products.append(code)
+        
+        print(f"✅ Total products: {len(purchased_products)}")
+        
+        return jsonify({
+            'purchased_products': purchased_products,
+            'total_sales': len(current_year_sales),
+            'current_year': current_year
         })
-    
-    return jsonify({
-        'brands': brands,
-        'customers': customers_list
-    })
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
-# ✅ اصلاح شده - داشبورد فروش کاربر
+
 @app.route('/user_dashboard')
 def user_dashboard():
     """داشبورد فروش کاربر"""
@@ -3067,6 +3470,14 @@ def get_my_product_analysis():
         sold_by_me.sort(key=lambda x: (x['radif'], -x['total_amount']))
         sold_by_others.sort(key=lambda x: (x['radif'], -x['total_lost_amount']))
         not_sold.sort(key=lambda x: (x['radif'], -x['price']))
+        
+        sold_by_me_filtered, sold_by_others_filtered, not_sold_filtered = \
+            filter_duplicate_products_in_analysis(
+                sold_by_me,
+                sold_by_others,
+                not_sold
+            )
+        
         
         print(f"✅ My analysis complete:")
         print(f"   Sold by me: {len(sold_by_me)}")
@@ -6768,6 +7179,833 @@ def load_reports_from_excel():
 # ===============================
 # پایان کدهای آزمون
 # ===============================
+def init_chat_files():
+    """ایجاد فایل‌های چت در صورت عدم وجود"""
+    try:
+        # فایل پیام‌ها
+        if not os.path.exists(MESSAGES_FILE):
+            df = pd.DataFrame(columns=[
+                'MessageID',
+                'SenderCode',
+                'SenderName',
+                'MessageText',
+                'Timestamp',
+                'JalaliDate',
+                'JalaliTime',
+                'IsRead',
+                'ReadBy'
+            ])
+            df.to_excel(MESSAGES_FILE, sheet_name='messages', index=False)
+            print("✅ فایل messages.xlsx ایجاد شد")
+        
+        # فایل وضعیت کاربران
+        if not os.path.exists(USER_STATUS_FILE):
+            df = pd.DataFrame(columns=[
+                'UserCode',
+                'UserName',
+                'IsOnline',
+                'LastActivity',
+                'LastSeen'
+            ])
+            df.to_excel(USER_STATUS_FILE, sheet_name='status', index=False)
+            print("✅ فایل user_status.xlsx ایجاد شد")
+            
+    except Exception as e:
+        print(f"❌ خطا در ایجاد فایل‌های چت: {e}")
+
+def load_messages():
+    """بارگذاری پیام‌ها"""
+    try:
+        init_chat_files()
+        
+        if not os.path.exists(MESSAGES_FILE):
+            return pd.DataFrame()
+        
+        df = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
+        
+        # پاک کردن NaN
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].fillna('')
+        
+        return df
+        
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری پیام‌ها: {e}")
+        return pd.DataFrame()
+
+def save_messages(df):
+    """ذخیره پیام‌ها"""
+    try:
+        df.to_excel(MESSAGES_FILE, sheet_name='messages', index=False)
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره پیام‌ها: {e}")
+        return False
+
+def load_user_status():
+    """بارگذاری وضعیت کاربران"""
+    try:
+        init_chat_files()
+        
+        if not os.path.exists(USER_STATUS_FILE):
+            return pd.DataFrame()
+        
+        df = pd.read_excel(USER_STATUS_FILE, sheet_name='status')
+        
+        # پاک کردن NaN
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].fillna('')
+        
+        return df
+        
+    except Exception as e:
+        print(f"❌ خطا در بارگذاری وضعیت: {e}")
+        return pd.DataFrame()
+
+def save_user_status(df):
+    """ذخیره وضعیت کاربران"""
+    try:
+        df.to_excel(USER_STATUS_FILE, sheet_name='status', index=False)
+        return True
+    except Exception as e:
+        print(f"❌ خطا در ذخیره وضعیت: {e}")
+        return False
+
+def get_next_message_id():
+    """دریافت شناسه پیام بعدی"""
+    df = load_messages()
+    if df.empty:
+        return 1
+    return int(df['MessageID'].max()) + 1
+
+def update_user_activity(user_code, user_name):
+    """به‌روزرسانی فعالیت کاربر"""
+    try:
+        df = load_user_status()
+        now = datetime.now()
+        
+        # چک کردن وجود کاربر
+        user_exists = False
+        if not df.empty:
+            mask = df['UserCode'] == user_code
+            if mask.any():
+                user_exists = True
+                df.loc[mask, 'LastActivity'] = now.strftime('%Y-%m-%d %H:%M:%S')
+                df.loc[mask, 'IsOnline'] = True
+        
+        # اگر کاربر جدید است
+        if not user_exists:
+            new_user = pd.DataFrame([{
+                'UserCode': user_code,
+                'UserName': user_name,
+                'IsOnline': True,
+                'LastActivity': now.strftime('%Y-%m-%d %H:%M:%S'),
+                'LastSeen': now.strftime('%Y-%m-%d %H:%M:%S')
+            }])
+            
+            df = pd.concat([df, new_user], ignore_index=True) if not df.empty else new_user
+        
+        save_user_status(df)
+        return True
+        
+    except Exception as e:
+        print(f"❌ خطا در به‌روزرسانی فعالیت: {e}")
+        return False
+
+def get_online_users_count():
+    """شمارش کاربران آنلاین"""
+    try:
+        df = load_user_status()
+        
+        if df.empty:
+            return 0
+        
+        now = datetime.now()
+        online_count = 0
+        
+        for _, row in df.iterrows():
+            try:
+                last_activity = datetime.strptime(str(row['LastActivity']), '%Y-%m-%d %H:%M:%S')
+                seconds_diff = (now - last_activity).total_seconds()
+                
+                # اگر در 5 دقیقه گذشته فعال بوده
+                if seconds_diff < 300:  # 5 minutes
+                    online_count += 1
+            except:
+                continue
+        
+        return online_count
+        
+    except Exception as e:
+        print(f"❌ خطا در شمارش آنلاین: {e}")
+        return 0
+
+# ==============================================
+# Routes
+# ==============================================
+
+@app.route('/chat')
+def chat():
+    """صفحه چت"""
+    if 'user_id' not in session:
+        flash('لطفاً ابتدا وارد شوید', 'error')
+        return redirect(url_for('login'))
+    
+    user = session.get('user_info')
+    
+    # به‌روزرسانی وضعیت آنلاین
+    update_user_activity(user['Codev'], user['Namev'])
+    
+    return render_template('chat.html', user=user)
+
+@app.route('/api/chat/send', methods=['POST'])
+def chat_send_message():
+    """ارسال پیام جدید"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        data = request.get_json()
+        message = data.get('message', '').strip()
+        
+        if not message:
+            return jsonify({'success': False, 'error': 'پیام خالی است'}), 400
+        
+        if len(message) > 1000:
+            return jsonify({'success': False, 'error': 'پیام بیش از حد طولانی است'}), 400
+        
+        user = session.get('user_info')
+        
+        # بارگذاری پیام‌های موجود
+        messages_df = load_messages()
+        
+        # تاریخ و زمان
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        
+        # ایجاد پیام جدید
+        new_message = pd.DataFrame([{
+            'MessageID': get_next_message_id(),
+            'SenderCode': user['Codev'],
+            'SenderName': user['Namev'],
+            'MessageText': message,
+            'Timestamp': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'JalaliDate': jalali_now.strftime('%Y/%m/%d'),
+            'JalaliTime': jalali_now.strftime('%H:%M'),
+            'IsRead': False,
+            'ReadBy': ''
+        }])
+        
+        # اضافه کردن پیام
+        messages_df = pd.concat([messages_df, new_message], ignore_index=True) if not messages_df.empty else new_message
+        
+        # ذخیره
+        if save_messages(messages_df):
+            # به‌روزرسانی فعالیت کاربر
+            update_user_activity(user['Codev'], user['Namev'])
+            
+            return jsonify({
+                'success': True,
+                'message_id': int(new_message.iloc[0]['MessageID'])
+            })
+        else:
+            return jsonify({'success': False, 'error': 'خطا در ذخیره پیام'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ارسال پیام: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/chat/messages')
+def chat_get_messages():
+    """دریافت پیام‌ها"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        messages_df = load_messages()
+        
+        if messages_df.empty:
+            return jsonify({'success': True, 'messages': []})
+        
+        # مرتب‌سازی بر اساس MessageID
+        messages_df = messages_df.sort_values('MessageID')
+        
+        # تبدیل به لیست
+        messages_list = []
+        for _, msg in messages_df.iterrows():
+            messages_list.append({
+                'MessageID': int(msg['MessageID']),
+                'SenderCode': str(msg['SenderCode']),
+                'SenderName': str(msg['SenderName']),
+                'MessageText': str(msg['MessageText']),
+                'JalaliDate': str(msg['JalaliDate']),
+                'JalaliTime': str(msg['JalaliTime']),
+                'Timestamp': str(msg['Timestamp'])
+            })
+        
+        return jsonify({'success': True, 'messages': messages_list})
+        
+    except Exception as e:
+        print(f"❌ خطا در دریافت پیام‌ها: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/chat/online-count')
+def chat_online_count():
+    """تعداد کاربران آنلاین"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        count = get_online_users_count()
+        return jsonify({'success': True, 'count': count})
+        
+    except Exception as e:
+        print(f"❌ خطا در شمارش آنلاین: {e}")
+        return jsonify({'success': True, 'count': 0})
+
+@app.route('/api/chat/heartbeat', methods=['POST'])
+def chat_heartbeat():
+    """به‌روزرسانی وضعیت آنلاین کاربر"""
+    if 'user_id' not in session:
+        return jsonify({'success': False}), 401
+    
+    try:
+        user = session.get('user_info')
+        update_user_activity(user['Codev'], user['Namev'])
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        print(f"❌ خطا در heartbeat: {e}")
+        return jsonify({'success': False}), 500
+
+def filter_duplicate_products_in_analysis(sold_by_me, sold_by_others, not_sold):
+    """
+    فیلتر محصولات تکراری (رسمی/غیررسمی) در گزارش عملکرد
+    
+    فرمت کدها:
+    - رسمی: P991234 (P + 99 + کد پایه)
+    - غیررسمی: P1234 (P + کد پایه)
+    
+    منطق:
+    1. اگر محصول رسمی یا غیررسمی فروخته شد → هر دو از "نفروخته‌ها" و "از دست رفته‌ها" حذف شوند
+    2. اگر هر دو (رسمی و غیررسمی) نفروخته شدند → فقط یکی نمایش داده شود
+    3. اگر هر دو توسط دیگران فروخته شدند → فقط یکی نمایش داده شود
+    
+    Args:
+        sold_by_me: لیست محصولات فروخته شده توسط من
+        sold_by_others: لیست محصولات فروخته شده توسط دیگران
+        not_sold: لیست محصولات نفروخته
+        
+    Returns:
+        tuple: (sold_by_me_filtered, sold_by_others_filtered, not_sold_filtered)
+    """
+    
+    print("\n" + "="*70)
+    print("🔍 شروع فیلتر محصولات تکراری در گزارش عملکرد (فرمت P99...)")
+    print("="*70)
+    
+    # =====================================
+    # تابع کمکی برای استخراج کد پایه
+    # =====================================
+    def get_base_code(code):
+        """استخراج کد پایه از کد محصول"""
+        code = str(code).strip().upper()
+        
+        # اگر با P شروع نمی‌شود
+        if not code.startswith('P'):
+            return code, code, False
+        
+        # حذف P از ابتدا
+        code_without_p = code[1:]
+        
+        # بررسی رسمی یا غیررسمی
+        if code_without_p.startswith('99') and len(code_without_p) > 2:
+            # رسمی (P99...)
+            base_code = code_without_p[2:]  # حذف 99
+            is_official = True
+        else:
+            # غیررسمی (P...)
+            base_code = code_without_p
+            is_official = False
+        
+        return code, base_code, is_official
+    
+    # =====================================
+    # مرحله 1: ساخت مجموعه کدهای پایه فروخته شده توسط من
+    # =====================================
+    my_sold_base_codes = set()
+    
+    for product in sold_by_me:
+        code = str(product.get('product_code', '')).strip()
+        original_code, base_code, is_official = get_base_code(code)
+        my_sold_base_codes.add(base_code)
+    
+    print(f"\n📊 محصولات فروخته شده توسط من:")
+    print(f"   تعداد کل: {len(sold_by_me)}")
+    print(f"   کدهای پایه یکتا: {len(my_sold_base_codes)}")
+    print(f"   نمونه کدهای پایه: {list(my_sold_base_codes)[:5]}")
+    
+    # =====================================
+    # مرحله 2: فیلتر "فرصت‌های از دست رفته"
+    # =====================================
+    # حذف محصولاتی که من فروخته‌ام (هر دو نسخه رسمی/غیررسمی)
+    
+    filtered_sold_by_others = []
+    removed_from_others = 0
+    
+    for product in sold_by_others:
+        code = str(product.get('product_code', '')).strip()
+        original_code, base_code, is_official = get_base_code(code)
+        
+        # اگر این محصول (رسمی یا غیررسمی) توسط من فروخته نشده
+        if base_code not in my_sold_base_codes:
+            filtered_sold_by_others.append(product)
+        else:
+            removed_from_others += 1
+            print(f"   ❌ حذف از 'از دست رفته': {original_code} (کد پایه: {base_code}) - چون من فروخته‌ام")
+    
+    print(f"\n⚠️ فرصت‌های از دست رفته:")
+    print(f"   قبل از فیلتر: {len(sold_by_others)}")
+    print(f"   حذف شده (چون من فروختم): {removed_from_others}")
+    print(f"   بعد از فیلتر: {len(filtered_sold_by_others)}")
+    
+    # =====================================
+    # مرحله 3: فیلتر "فرصت‌های فروش جدید" (نفروخته‌ها)
+    # =====================================
+    
+    # گروه‌بندی بر اساس کد پایه
+    not_sold_grouped = defaultdict(list)
+    
+    for product in not_sold:
+        code = str(product.get('product_code', '')).strip()
+        original_code, base_code, is_official = get_base_code(code)
+        
+        # اگر این محصول توسط من فروخته نشده
+        if base_code not in my_sold_base_codes:
+            not_sold_grouped[base_code].append({
+                'product': product,
+                'code': original_code,
+                'base_code': base_code,
+                'is_official': is_official,
+                'price': float(product.get('price', 0))
+            })
+    
+    print(f"\n🎯 فرصت‌های فروش جدید:")
+    print(f"   قبل از فیلتر: {len(not_sold)}")
+    print(f"   بعد از حذف فروخته‌ها: {sum(len(v) for v in not_sold_grouped.values())}")
+    print(f"   کدهای پایه یکتا: {len(not_sold_grouped)}")
+    
+    # انتخاب یکی از رسمی/غیررسمی
+    filtered_not_sold = []
+    
+    for base_code, variants in not_sold_grouped.items():
+        if len(variants) == 1:
+            # فقط یک نسخه دارد
+            filtered_not_sold.append(variants[0]['product'])
+        else:
+            # هر دو نسخه دارد → گران‌تر را انتخاب کن
+            variants_sorted = sorted(variants, key=lambda x: x['price'], reverse=True)
+            selected = variants_sorted[0]
+            
+            print(f"\n   🔄 تکراری یافت شد - کد پایه: {base_code}")
+            for v in variants:
+                marker = "✅" if v == selected else "❌"
+                v_type = "رسمی" if v['is_official'] else "غیررسمی"
+                print(f"      {marker} {v_type} ({v['code']}): {v['price']:,.0f} تومان")
+            
+            filtered_not_sold.append(selected['product'])
+    
+    print(f"\n   بعد از حذف تکراری: {len(filtered_not_sold)}")
+    
+    # =====================================
+    # مرحله 4: حذف تکراری‌ها از "فرصت‌های از دست رفته"
+    # =====================================
+    
+    others_grouped = defaultdict(list)
+    
+    for product in filtered_sold_by_others:
+        code = str(product.get('product_code', '')).strip()
+        original_code, base_code, is_official = get_base_code(code)
+        
+        others_grouped[base_code].append({
+            'product': product,
+            'code': original_code,
+            'base_code': base_code,
+            'is_official': is_official,
+            'total_lost_amount': float(product.get('total_lost_amount', 0))
+        })
+    
+    # انتخاب یکی از رسمی/غیررسمی
+    final_sold_by_others = []
+    
+    for base_code, variants in others_grouped.items():
+        if len(variants) == 1:
+            final_sold_by_others.append(variants[0]['product'])
+        else:
+            # گران‌تر (بیشترین فرصت از دست رفته)
+            variants_sorted = sorted(variants, key=lambda x: x['total_lost_amount'], reverse=True)
+            selected = variants_sorted[0]
+            
+            print(f"\n   🔄 تکراری در از دست رفته - کد پایه: {base_code}")
+            for v in variants:
+                marker = "✅" if v == selected else "❌"
+                v_type = "رسمی" if v['is_official'] else "غیررسمی"
+                print(f"      {marker} {v_type} ({v['code']}): {v['total_lost_amount']:,.0f} تومان")
+            
+            final_sold_by_others.append(selected['product'])
+    
+    print(f"\n⚠️ فرصت‌های از دست رفته (بعد از حذف تکراری):")
+    print(f"   قبل: {len(filtered_sold_by_others)}")
+    print(f"   بعد: {len(final_sold_by_others)}")
+    
+    # =====================================
+    # نتیجه نهایی
+    # =====================================
+    
+    print("\n" + "="*70)
+    print("📊 نتیجه نهایی:")
+    print(f"   ✅ فروخته شده توسط من: {len(sold_by_me)} (بدون تغییر)")
+    print(f"   ⚠️ از دست رفته: {len(sold_by_others)} → {len(final_sold_by_others)}")
+    print(f"   🎯 نفروخته: {len(not_sold)} → {len(filtered_not_sold)}")
+    print("="*70 + "\n")
+    
+    return sold_by_me, final_sold_by_others, filtered_not_sold
+
+
+print("✅ سیستم فیلتر محصولات تکراری برای گزارش عملکرد (P99) آماده شد!")
+
+import pandas as pd
+from flask import jsonify, render_template, session, redirect, url_for, flash, request
+import jdatetime
+from datetime import datetime
+
+@app.route('/detailed_brand_report')
+def detailed_brand_report():
+    """صفحه گزارش فروش برندی تفصیلی"""
+    if 'user_id' not in session:
+        flash('لطفاً ابتدا وارد شوید', 'error')
+        return redirect(url_for('login'))
+    
+    user = session.get('user_info')
+    
+    # لیست بازاریاب‌ها (برای ادمین)
+    salespersons = []
+    if user['Typev'] == 'admin':
+        users_df = load_users_from_excel()
+        if not users_df.empty:
+            salespersons = users_df[users_df['Typev'] == 'user'].to_dict('records')
+    
+    return render_template('detailed_brand_report.html', 
+                         user=user,
+                         salespersons=salespersons)
+
+
+@app.route('/api/get_brands_list')
+def api_get_brands_list():
+    """دریافت لیست برندها"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        brands_list = []
+        
+        # روش 1: اگر فایل brands.xlsx دارید
+        if os.path.exists('brands.xlsx'):
+            brands_df = pd.read_excel('brands.xlsx', sheet_name='brands')
+            if not brands_df.empty:
+                brands_list = brands_df.to_dict('records')
+        
+        # روش 2: استخراج از products.xlsx
+        elif os.path.exists('products.xlsx'):
+            products_df = pd.read_excel('products.xlsx', sheet_name='products')
+            
+            if 'Brand' in products_df.columns:
+                unique_brands = products_df['Brand'].dropna().unique()
+                brands_list = [
+                    {'BrandID': i+1, 'BrandName': brand}
+                    for i, brand in enumerate(sorted(unique_brands))
+                ]
+        
+        brands_list = sorted(brands_list, key=lambda x: x['BrandName'])
+        
+        return jsonify({'success': True, 'brands': brands_list})
+        
+    except Exception as e:
+        print(f"❌ خطا در دریافت برندها: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# تابع کمکی برای تبدیل تاریخ
+def jalali_to_gregorian(jalali_date):
+    """تبدیل تاریخ شمسی به میلادی"""
+    try:
+        parts = jalali_date.strip().split('/')
+        if len(parts) != 3:
+            return None
+        
+        year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+        j_date = jdatetime.date(year, month, day)
+        g_date = j_date.togregorian()
+        
+        return g_date.strftime('%Y-%m-%d')
+    except:
+        return None
+
+
+@app.route('/api/detailed_brand_sales_report', methods=['POST'])
+def api_detailed_brand_sales_report():
+    """تولید گزارش فروش برندی تفصیلی با جزئیات هر محصول"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        data = request.get_json()
+        
+        salesperson_code = data.get('salesperson_code', 'all')
+        date_from = data.get('date_from')
+        date_to = data.get('date_to')
+        selected_brands = data.get('brands', [])
+        
+        user = session.get('user_info')
+        
+        print("\n" + "="*70)
+        print("📊 تولید گزارش فروش برندی تفصیلی")
+        print("="*70)
+        print(f"   کاربر: {user['Namev']} ({user['Codev']})")
+        print(f"   نوع کاربر: {user['Typev']}")
+        print(f"   از تاریخ: {date_from}")
+        print(f"   تا تاریخ: {date_to}")
+        print(f"   برندهای انتخابی: {len(selected_brands)}")
+        
+        # تبدیل تاریخ شمسی به میلادی
+        date_from_gregorian = jalali_to_gregorian(date_from)
+        date_to_gregorian = jalali_to_gregorian(date_to)
+        
+        if not date_from_gregorian or not date_to_gregorian:
+            return jsonify({'success': False, 'error': 'فرمت تاریخ نامعتبر است'}), 400
+        
+        print(f"   تاریخ میلادی: {date_from_gregorian} تا {date_to_gregorian}")
+        
+        # تعیین بازاریاب
+        if user['Typev'] == 'admin':
+            if salesperson_code == 'all':
+                target_salesperson = 'کل مجموعه'
+                filter_by_salesperson = False
+                print(f"   بازاریاب: همه بازاریاب‌ها")
+            else:
+                users_df = load_users_from_excel()
+                target_user = users_df[users_df['Codev'] == salesperson_code]
+                if not target_user.empty:
+                    target_salesperson = target_user.iloc[0]['Namev']
+                else:
+                    target_salesperson = salesperson_code
+                filter_by_salesperson = True
+                print(f"   بازاریاب: {target_salesperson} ({salesperson_code})")
+        else:
+            salesperson_code = user['Codev']
+            target_salesperson = user['Namev']
+            filter_by_salesperson = True
+            print(f"   بازاریاب: {target_salesperson} (خودش)")
+        
+        # بارگذاری داده‌ها
+        sales_df = load_sales_from_excel()
+        products_df = load_products_from_excel()
+        
+        if sales_df.empty or products_df.empty:
+            return jsonify({
+                'success': True,
+                'brands_data': [],
+                'total_amount': 0,
+                'total_quantity': 0,
+                'report_title': f'گزارش فروش {target_salesperson}',
+                'date_from': date_from,
+                'date_to': date_to
+            })
+        
+        # تشخیص نام ستون تاریخ
+        date_column = None
+        if 'JalaliDate' in sales_df.columns:
+            date_column = 'JalaliDate'
+            use_jalali = True
+        elif 'InvoiceDate' in sales_df.columns:
+            date_column = 'InvoiceDate'
+            use_jalali = False
+        elif 'SaleDate' in sales_df.columns:
+            date_column = 'SaleDate'
+            use_jalali = False
+        else:
+            return jsonify({'success': False, 'error': 'ستون تاریخ در فایل یافت نشد'}), 500
+        
+        print(f"   ستون تاریخ: {date_column}")
+        
+        # تبدیل تاریخ‌های فروش
+        def convert_date_to_gregorian(date_value):
+            """تبدیل تاریخ به میلادی"""
+            if pd.isna(date_value):
+                return None
+            
+            date_str = str(date_value).strip()
+            
+            # اگر قبلاً میلادی است (YYYY-MM-DD)
+            if '-' in date_str and len(date_str) == 10:
+                return date_str
+            
+            # اگر شمسی است (YYYY/MM/DD)
+            if '/' in date_str:
+                return jalali_to_gregorian(date_str)
+            
+            return None
+        
+        # تبدیل تاریخ‌ها
+        sales_df_copy = sales_df.copy()
+        sales_df_copy['DateConverted'] = sales_df_copy[date_column].apply(convert_date_to_gregorian)
+        
+        # حذف ردیف‌های بدون تاریخ
+        sales_df_copy = sales_df_copy.dropna(subset=['DateConverted'])
+        
+        # فیلتر بر اساس تاریخ
+        sales_filtered = sales_df_copy[
+            (sales_df_copy['DateConverted'] >= date_from_gregorian) & 
+            (sales_df_copy['DateConverted'] <= date_to_gregorian)
+        ].copy()
+        
+        print(f"\n   فروش در بازه زمانی: {len(sales_filtered)} سفارش")
+        
+        # فیلتر بر اساس بازاریاب
+        if filter_by_salesperson:
+            # تشخیص نام ستون بازاریاب
+            salesperson_column = None
+            if 'SalespersonCode' in sales_filtered.columns:
+                salesperson_column = 'SalespersonCode'
+            elif 'VisitorCode' in sales_filtered.columns:
+                salesperson_column = 'VisitorCode'
+            elif 'BazaryabCode' in sales_filtered.columns:
+                salesperson_column = 'BazaryabCode'
+            
+            if salesperson_column:
+                sales_filtered = sales_filtered[
+                    sales_filtered[salesperson_column] == salesperson_code
+                ]
+                print(f"   فروش بازاریاب: {len(sales_filtered)} سفارش")
+        
+        if sales_filtered.empty:
+            return jsonify({
+                'success': True,
+                'brands_data': [],
+                'total_amount': 0,
+                'total_quantity': 0,
+                'report_title': f'گزارش فروش {target_salesperson}',
+                'date_from': date_from,
+                'date_to': date_to
+            })
+        
+        # Merge با محصولات
+        sales_with_brand = sales_filtered.merge(
+            products_df[['ProductCode', 'ProductName', 'Brand']],
+            on='ProductCode',
+            how='left'
+        )
+        
+        sales_with_brand['Brand'] = sales_with_brand['Brand'].fillna('نامشخص')
+        
+        # فیلتر بر اساس برندها
+        sales_with_brand = sales_with_brand[
+            sales_with_brand['Brand'].isin(selected_brands)
+        ]
+        
+        print(f"   فروش برندهای انتخابی: {len(sales_with_brand)} سفارش")
+        
+        # تشخیص ستون مبلغ و تعداد
+        amount_column = 'TotalPrice' if 'TotalPrice' in sales_with_brand.columns else 'TotalAmount'
+        quantity_column = 'Quantity'
+        
+        # محاسبه فروش هر محصول در هر برند
+        product_sales = sales_with_brand.groupby(['Brand', 'ProductCode', 'ProductName']).agg({
+            amount_column: 'sum',
+            quantity_column: 'sum'
+        }).reset_index()
+        
+        product_sales.columns = ['Brand', 'ProductCode', 'ProductName', 'Amount', 'Quantity']
+        
+        # محاسبه فروش هر برند
+        brand_sales = sales_with_brand.groupby('Brand').agg({
+            amount_column: 'sum',
+            quantity_column: 'sum'
+        }).reset_index()
+        
+        brand_sales.columns = ['Brand', 'TotalAmount', 'TotalQuantity']
+        brand_sales = brand_sales.sort_values('TotalAmount', ascending=False)
+        
+        # ساخت گزارش نهایی
+        brands_data = []
+        
+        for _, brand_row in brand_sales.iterrows():
+            brand_name = brand_row['Brand']
+            brand_total = float(brand_row['TotalAmount'])
+            brand_quantity = int(brand_row['TotalQuantity'])
+            
+            # محصولات این برند
+            brand_products = product_sales[product_sales['Brand'] == brand_name]
+            brand_products = brand_products.sort_values('Amount', ascending=False)
+            
+            products_list = []
+            for _, prod in brand_products.iterrows():
+                products_list.append({
+                    'product_code': str(prod['ProductCode']),
+                    'product_name': str(prod['ProductName']),
+                    'amount': float(prod['Amount']),
+                    'quantity': int(prod['Quantity'])
+                })
+            
+            brands_data.append({
+                'brand_name': str(brand_name),
+                'total_amount': brand_total,
+                'total_quantity': brand_quantity,
+                'products': products_list
+            })
+        
+        # محاسبه مجموع کل
+        total_amount = float(brand_sales['TotalAmount'].sum())
+        total_quantity = int(brand_sales['TotalQuantity'].sum())
+        
+        print(f"\n✅ گزارش آماده شد:")
+        print(f"   تعداد برندها: {len(brands_data)}")
+        print(f"   مجموع فروش: {total_amount:,.0f} تومان")
+        print(f"   مجموع تعداد: {total_quantity:,.0f} عدد")
+        
+        print(f"\n   📊 برندهای برتر:")
+        for i, brand in enumerate(brands_data[:5], 1):
+            percentage = (brand['total_amount'] / total_amount * 100) if total_amount > 0 else 0
+            print(f"      {i}. {brand['brand_name']}: {brand['total_amount']:,.0f} تومان ({percentage:.1f}%)")
+            print(f"         محصولات: {len(brand['products'])} محصول")
+        
+        print("="*70 + "\n")
+        
+        return jsonify({
+            'success': True,
+            'brands_data': brands_data,
+            'total_amount': total_amount,
+            'total_quantity': total_quantity,
+            'report_title': f'گزارش فروش {target_salesperson}',
+            'date_from': date_from,
+            'date_to': date_to
+        })
+        
+    except Exception as e:
+        print(f"❌ خطا در تولید گزارش: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'خطا: {str(e)}'}), 500
+
+
+print("✅ سیستم گزارش فروش برندی تفصیلی آماده شد!")
+
 
 if __name__ == '__main__':
     #print("🚀 Starting enhanced Flask application...")
@@ -6783,5 +8021,5 @@ if __name__ == '__main__':
     import os
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
-   
+    init_chat_files()    
     #app.run(debug=True)
