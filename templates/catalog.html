@@ -715,7 +715,7 @@
         }
         
         .product-name {
-            font-size: 1.1rem;
+            font-size: 0.85rem;
             font-weight: bold;
             color: #2c3e50;
             margin-bottom: 8px;
@@ -1149,8 +1149,218 @@
                 opacity: 1;
                 transform: translateY(0);
             }
-        }		
-    </style>
+        }
+        /* رنگ‌بندی کارت‌های محصول بر اساس خرید مشتری */
+        .product-card.purchased {
+            border: 3px solid #28a745 !important;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3) !important;
+        }
+        
+        .product-card.not-purchased {
+            border: 3px solid #dc3545 !important;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3) !important;
+        }
+        
+        .purchase-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .purchase-badge.purchased {
+            background: #28a745;
+            color: white;
+        }
+        
+        .purchase-badge.not-purchased {
+            background: #dc3545;
+            color: white;
+        }
+        
+        /* استایل قیمت غیررسمی */
+        .price-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .price-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        
+        .price-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .price-value.official {
+            color: #007bff;
+        }
+        
+        .price-value.unofficial {
+            color: #17a2b8;
+        }
+        
+        .stock-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+        /* بخش‌های کشویی */
+        .product-details-toggle {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+        
+        .product-details-toggle:hover {
+            background: linear-gradient(45deg, #764ba2, #667eea);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .product-details-toggle i {
+            transition: transform 0.3s ease;
+        }
+        
+        .product-details-toggle.active i {
+            transform: rotate(180deg);
+        }
+        
+        .product-details-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease;
+            padding: 0 10px;
+        }
+        
+        .product-details-content.active {
+            max-height: 600px;
+            padding: 15px 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            margin-top: 10px;
+            background: #f8f9fa;
+        }
+        
+        .details-section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .details-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .details-section-title {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .details-section-title i {
+            color: #667eea;
+        }
+
+		
+    
+        /* رنگ‌بندی محصولات */
+        .product-card.purchased {
+            border: 3px solid #28a745 !important;
+            background: linear-gradient(135deg, #e8f9ed 0%, #d4f4dd 100%) !important;
+            box-shadow: 0 4px 20px rgba(40, 167, 69, 0.4) !important;
+        }
+        
+        .product-card.not-purchased {
+            border: 3px solid #dc3545 !important;
+            background: linear-gradient(135deg, #ffe5e5 0%, #ffd1d1 100%) !important;
+            box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4) !important;
+        }
+        
+        .purchase-badge {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .purchase-badge.purchased {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            box-shadow: 0 3px 15px rgba(40, 167, 69, 0.5);
+        }
+        
+        .purchase-badge.not-purchased {
+            background: linear-gradient(135deg, #dc3545, #e74c3c);
+            color: white;
+            box-shadow: 0 3px 15px rgba(220, 53, 69, 0.5);
+        }
+        
+        .customer-required-message {
+            text-align: center;
+            padding: 80px 20px;
+            font-size: 1.5rem;
+            color: #6c757d;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            margin: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .customer-required-message i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            display: block;
+            color: #007bff;
+        }
+</style>
 </head>
 <body>
     <div class="container-fluid">
@@ -1290,14 +1500,27 @@
             </div>
         </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js">
+        // تابع باز و بسته کردن جزئیات محصول
+        function toggleProductDetails(productCode) {
+            const button = document.getElementById('details-toggle-' + productCode);
+            const content = document.getElementById('details-content-' + productCode);
+            
+            if (button && content) {
+                button.classList.toggle('active');
+                content.classList.toggle('active');
+            }
+        }
+
+    </script>
     <script>		
 let catalogData = {};
         let currentSearchTerm = '';
         let originalBrandOrder = [];
         let currentBrandOrder = [];
         let hasUnsavedChanges = false;
-        let selectedGlobalCustomer = null; // ← این خط جدید        
+        let selectedGlobalCustomer = null;
+        let customerPurchasedProducts = []; // ← این خط جدید        
 		
         // بارگذاری اولیه
         document.addEventListener('DOMContentLoaded', function() {
@@ -1328,7 +1551,7 @@ let catalogData = {};
                 await loadBrandOrder();
 				loadGlobalCustomers(); // ← این خط جدید
                 setupBrandTabs();
-                displayAllBrands();
+                hideProducts();
                 setupBrandManager();
                 checkAdminAccess();
                 
@@ -1355,7 +1578,7 @@ let catalogData = {};
         }
         
         // انتخاب مشتری سراسری
-        function selectGlobalCustomer() {
+        async function selectGlobalCustomer() {
             const globalSelect = document.getElementById('globalCustomerSelect');
             const customerStatus = document.getElementById('customerStatus');
             const customerInfoDisplay = document.getElementById('customerInfoDisplay');
@@ -1374,6 +1597,13 @@ let catalogData = {};
                 if (customer) {
                     selectedGlobalCustomer = customer;
                     
+                    showProducts();
+                    await loadCustomerPurchaseHistory(customer.CustomerCode);
+                    setTimeout(function() {
+                        updateProductsDisplay();
+                        attachToggleListeners();
+                    }, 300);
+                    
                     // بروزرسانی نمایش
                     customerStatus.innerHTML = 
                         '<span class="status-text">مشتری انتخاب شده</span>' +
@@ -1390,6 +1620,10 @@ let catalogData = {};
                     
                     // نمایش پیام موفقیت
                     showGlobalMessage('مشتری با موفقیت انتخاب شد: ' + customer.CustomerName, 'success');
+                    
+                    // بارگذاری تاریخچه خرید و به‌روزرسانی نمایش
+                    await loadCustomerPurchaseHistory(customerCode);
+                    updateProductsDisplay();
                 }
             }
         }
@@ -1402,6 +1636,10 @@ let catalogData = {};
             const clearBtn = document.getElementById('clearCustomerBtn');
             
             selectedGlobalCustomer = null;
+            customerPurchasedProducts = [];
+            hideProducts();
+            customerPurchasedProducts = [];
+            
             globalSelect.value = '';
             
             customerStatus.innerHTML = 
@@ -1413,6 +1651,7 @@ let catalogData = {};
             
             // غیرفعال کردن تمام دکمه‌های سفارش
             disableAllOrderButtons();
+            updateProductsDisplay();
             
             showGlobalMessage('انتخاب مشتری پاک شد', 'info');
         }
@@ -1428,6 +1667,77 @@ let catalogData = {};
                 if (!stockBadge.classList.contains('out-of-stock')) {
                     btn.disabled = false;
                 }
+
+        // بارگذاری تاریخچه خرید مشتری
+        async function loadCustomerPurchaseHistory(customerCode) {
+            try {
+                const response = await fetch(`/get_customer_purchase_history?customer_code=${customerCode}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error loading purchase history:', data.error);
+                    customerPurchasedProducts = [];
+                    return;
+                }
+                
+                customerPurchasedProducts = data.purchased_products || [];
+                console.log(`✅ Loaded ${customerPurchasedProducts.length} purchased products for customer ${customerCode}`);
+                
+            } catch (error) {
+                console.error('Error loading purchase history:', error);
+                customerPurchasedProducts = [];
+            }
+        }
+        
+        // به‌روزرسانی نمایش محصولات بر اساس مشتری انتخاب شده
+        function updateProductsDisplay() {
+            console.log('==============================================');
+            console.log('🎨 شروع رنگ‌بندی محصولات');
+            console.log('👤 مشتری:', selectedGlobalCustomer ? selectedGlobalCustomer.CustomerName : 'انتخاب نشده');
+            console.log('🛒 تعداد محصولات خریده:', customerPurchasedProducts.length);
+            console.log('📦 کدهای خریده شده:', customerPurchasedProducts);
+            console.log('==============================================');
+            
+            const allProducts = document.querySelectorAll('.product-card');
+            
+            allProducts.forEach(card => {
+                const productCode = card.getAttribute('data-product-code');
+                
+                // حذف کلاس‌های قبلی
+                card.classList.remove('purchased', 'not-purchased');
+                
+                // حذف بج‌های قبلی
+                const oldBadge = card.querySelector('.purchase-badge');
+                if (oldBadge) {
+                    oldBadge.remove();
+                }
+                
+                // اگر مشتری انتخاب شده
+                if (selectedGlobalCustomer) {
+                    const isPurchased = customerPurchasedProducts.includes(productCode);
+                    
+                    // اضافه کردن کلاس مناسب
+                    if (isPurchased) {
+                        card.classList.add('purchased');
+                        
+                        // اضافه کردن بج خریداری شده
+                        //const badge = document.createElement('div');
+                        //badge.className = 'purchase-badge purchased';
+                        //badge.innerHTML = '<i class="fas fa-check-circle"></i> خریداری شده';
+                        //card.appendChild(badge);
+                    } else {
+                        card.classList.add('not-purchased');
+                        
+                        // اضافه کردن بج خریداری نشده
+                        //const badge = document.createElement('div');
+                        //badge.className = 'purchase-badge not-purchased';
+                        //badge.innerHTML = '<i class="fas fa-times-circle"></i> خریداری نشده';
+                        //card.appendChild(badge);
+                    }
+                }
+            });
+        }
+
             });
         }
         
@@ -1904,21 +2214,88 @@ let catalogData = {};
                 const stockClass = product.Stock > 0 ? 'stock-badge' : 'stock-badge out-of-stock';
                 const stockText = product.Stock > 0 ? 'موجود: ' + product.Stock : 'ناموجود';
                 
-                const radifNumber = parseInt(product.radif || product.Radif || product.RADIF);
-                const radifDisplay = (radifNumber && radifNumber !== 999999) ? '<div class="product-radif">ردیف: ' + radifNumber + '</div>' : '';
+                
+                
                 
                 html += '<div class="product-card" data-product-name="' + product.ProductName.toLowerCase() + '" data-product-code="' + product.ProductCode + '">';
                 html += '<div class="' + stockClass + '">' + stockText + '</div>';
                 html += '<img src="/static/images/' + product.ImageFile + '" alt="' + product.ProductName + '" class="product-image" onerror="this.src=\'/static/images/null.jpg\'">';
                 html += '<div class="product-info">';
-                html += radifDisplay;
+                
                 html += '<div class="product-name">' + product.ProductName + '</div>';
                 html += '<div class="product-category"><i class="fas fa-folder"></i> ' + product.Category + '</div>';
-                html += '<div class="product-price"><i class="fas fa-tag"></i> ' + formatPrice(product.Price) + ' ريال</div>';
-                html += '<div class="product-description">' + product.Description + '</div>';
+                // دکمه مشاهده جزئیات
+                html += '<button class="product-details-toggle" id="details-toggle-' + product.ProductCode + '" data-code="' + product.ProductCode + '">';
+                html += '    <span><i class="fas fa-info-circle"></i> مشاهده جزئیات و قیمت‌ها</span>';
+                html += '    <i class="fas fa-chevron-down"></i>';
+                html += '</button>';
                 
-                html += generateOffersSection(product);
+                // محتوای کشویی
+                html += '<div class="product-details-content" id="details-content-' + product.ProductCode + '">';
                 
+                // بخش قیمت‌ها
+                html += '    <div class="details-section">';
+                html += '        <div class="details-section-title">';
+                html += '            <i class="fas fa-tag"></i>';
+                html += '            <span>قیمت‌ها</span>';
+                html += '        </div>';
+                html += '        <div class="price-section">';
+                html += '            <div class="price-row">';
+                html += '                <span class="price-label">قیمت رسمی:</span>';
+                html += '                <span class="price-value official">' + formatPrice(product.Price) + ' ریال</span>';
+                html += '            </div>';
+                html += '            <div class="price-row">';
+                html += '                <span class="price-label">قیمت غیررسمی:</span>';
+                html += '                <span class="price-value unofficial">' + formatPrice(product.UnofficialPrice) + ' ریال</span>';
+                html += '            </div>';
+                html += '        </div>';
+                html += '    </div>';
+                
+                // بخش توضیحات
+                if (product.Description && product.Description.trim() !== '') {
+                    html += '    <div class="details-section">';
+                    html += '        <div class="details-section-title">';
+                    html += '            <i class="fas fa-align-right"></i>';
+                    html += '            <span>توضیحات</span>';
+                    html += '        </div>';
+                    html += '        <p class="product-description">' + product.Description + '</p>';
+                    html += '    </div>';
+                }
+                
+                // بخش پیشنهادات ویژه
+                var hasOffers = (product.Offer1 && product.Offer1.trim() !== '') || 
+                                (product.Offer2 && product.Offer2.trim() !== '') || 
+                                (product.Offer3 && product.Offer3.trim() !== '');
+                
+                if (hasOffers) {
+                    html += '    <div class="details-section">';
+                    html += '        <div class="details-section-title">';
+                    html += '            <i class="fas fa-gift"></i>';
+                    html += '            <span>پیشنهادات ویژه</span>';
+                    html += '        </div>';
+                    html += '        <div class="offer-badges">';
+                    
+                    if (product.Offer1 && product.Offer1.trim() !== '') {
+                        html += '            <span class="offer-badge offer-1">';
+                        html += '                <i class="fas fa-gift"></i> ' + product.Offer1;
+                        html += '            </span>';
+                    }
+                    if (product.Offer2 && product.Offer2.trim() !== '') {
+                        html += '            <span class="offer-badge offer-2">';
+                        html += '                <i class="fas fa-percent"></i> ' + product.Offer2;
+                        html += '            </span>';
+                    }
+                    if (product.Offer3 && product.Offer3.trim() !== '') {
+                        html += '            <span class="offer-badge offer-3">';
+                        html += '                <i class="fas fa-star"></i> ' + product.Offer3;
+                        html += '            </span>';
+                    }
+                    
+                    html += '        </div>';
+                    html += '    </div>';
+                }
+                
+                html += '</div>'; // پایان product-details-content
                 html += '<div class="order-section">';
                 
                 html += '<div class="quantity-section">';
@@ -2022,6 +2399,12 @@ let catalogData = {};
         
 // ثبت سفارش
         async function submitOrder(productCode, price) {
+            // بررسی انتخاب مشتری
+            if (!selectedGlobalCustomer) {
+                showGlobalMessage('لطفاً ابتدا یک مشتری انتخاب کنید', 'error');
+                return;
+            }
+            
             const quantityInput = document.getElementById('qty-' + productCode);
             const orderBtn = document.getElementById('order-btn-' + productCode);
             const successMsg = document.getElementById('success-' + productCode);
@@ -2257,6 +2640,120 @@ let catalogData = {};
         document.addEventListener('mousedown', function() {
             document.body.classList.remove('keyboard-navigation');
         });
+    
+        // تابع مخفی کردن محصولات
+        function hideProducts() {
+            var loadingMsg = document.getElementById('loadingMessage');
+            if (loadingMsg) {
+                loadingMsg.style.display = 'none';
+            }
+            
+            var container = document.getElementById('brandsContainer');
+            if (container) {
+                container.innerHTML = '<div class="customer-required-message"><i class="fas fa-user-circle"></i><div>لطفاً ابتدا یک مشتری انتخاب کنید</div></div>';
+            }
+        }
+        
+        // تابع نمایش محصولات
+        function showProducts() {
+            var loadingMsg = document.getElementById('loadingMessage');
+            if (loadingMsg) {
+                loadingMsg.style.display = 'none';
+            }
+            displayAllBrands();
+        }
+        
+        // تابع بارگذاری تاریخچه خرید
+        async function loadCustomerPurchaseHistory(customerCode) {
+            try {
+                var response = await fetch('/get_customer_purchase_history?customer_code=' + customerCode);
+                var data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    customerPurchasedProducts = [];
+                    return;
+                }
+                
+                customerPurchasedProducts = data.purchased_products || [];
+                console.log('Loaded ' + customerPurchasedProducts.length + ' products');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                customerPurchasedProducts = [];
+            }
+        }
+        
+        // تابع رنگ‌بندی محصولات
+        function updateProductsDisplay() {
+            console.log('==============================================');
+            console.log('🎨 شروع رنگ‌بندی محصولات');
+            console.log('👤 مشتری:', selectedGlobalCustomer ? selectedGlobalCustomer.CustomerName : 'انتخاب نشده');
+            console.log('🛒 تعداد محصولات خریده:', customerPurchasedProducts.length);
+            console.log('📦 کدهای خریده شده:', customerPurchasedProducts);
+            console.log('==============================================');
+            
+            var allProducts = document.querySelectorAll('.product-card');
+            
+            allProducts.forEach(function(card) {
+                var productCode = card.getAttribute('data-product-code');
+                
+                card.classList.remove('purchased', 'not-purchased');
+                var oldBadge = card.querySelector('.purchase-badge');
+                if (oldBadge) {
+                    oldBadge.remove();
+                }
+                
+                if (selectedGlobalCustomer) {
+                    // بررسی با trim و string conversion
+                    var isPurchased = false;
+                    for (var i = 0; i < customerPurchasedProducts.length; i++) {
+                        var purchasedCode = String(customerPurchasedProducts[i]).trim();
+                        var cardCode = String(productCode).trim();
+                        
+                        if (purchasedCode === cardCode) {
+                            isPurchased = true;
+                            console.log('✅ MATCH! کد محصول:', cardCode, '=', purchasedCode);
+                            break;
+                        }
+                    }
+                    
+                    if (!isPurchased) {
+                        console.log('❌ کد محصول', productCode, 'در لیست خریدها نیست');
+                    }
+                    
+                    if (isPurchased) {
+                        card.classList.add('purchased');
+                        //var badge = document.createElement('div');
+                        //badge.className = 'purchase-badge purchased';
+                        //badge.innerHTML = '<i class="fas fa-check-circle"></i> خریداری شده';
+                        //card.insertBefore(badge, card.firstChild);
+                    } else {
+                        card.classList.add('not-purchased');
+                        //var badge = document.createElement('div');
+                        //badge.className = 'purchase-badge not-purchased';
+                        //badge.innerHTML = '<i class="fas fa-times-circle"></i> خریداری نشده';
+                        //card.insertBefore(badge, card.firstChild);
+                    }
+                }
+            });
+        }
+        
+        // تابع اضافه کردن event listeners
+        function attachToggleListeners() {
+            var buttons = document.querySelectorAll('.product-details-toggle');
+            buttons.forEach(function(btn) {
+                btn.onclick = null;
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var code = this.getAttribute('data-code') || this.id.replace('details-toggle-', '');
+                    if (code) {
+                        toggleProductDetails(code);
+                    }
+                });
+            });
+        }
+
     </script>
 </body>
 </html>
