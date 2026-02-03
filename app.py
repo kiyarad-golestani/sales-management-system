@@ -7362,21 +7362,68 @@ def chat():
 
 @app.route('/api/chat/send', methods=['POST'])
 def chat_send_message():
-    """ارسال پیام جدید"""
+    """ارسال پیام جدید - پشتیبانی از JSON و FormData"""
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
     
     try:
-        data = request.get_json()
-        message = data.get('message', '').strip()
+        # ✅ تشخیص نوع درخواست
+        content_type = request.content_type
         
-        if not message:
-            return jsonify({'success': False, 'error': 'پیام خالی است'}), 400
+        # اگر FormData است (فایل دارد)
+        if content_type and 'multipart/form-data' in content_type:
+            message = request.form.get('message', '').strip()
+            file = request.files.get('file')
+            print(f"📤 دریافت FormData: message={message[:50] if message else 'None'}, file={file.filename if file else 'None'}")
         
-        if len(message) > 1000:
+        # اگر JSON است (فقط متن)
+        elif content_type and 'application/json' in content_type:
+            data = request.get_json()
+            message = data.get('message', '').strip()
+            file = None
+            print(f"📤 دریافت JSON: message={message[:50] if message else 'None'}")
+        
+        # اگر هیچکدام نیست - سعی در دریافت به هر دو شکل
+        else:
+            # ابتدا سعی در دریافت از form
+            message = request.form.get('message', '').strip()
+            file = request.files.get('file') if hasattr(request, 'files') else None
+            
+            # اگر خالی بود، سعی در دریافت از JSON
+            if not message and not file:
+                try:
+                    data = request.get_json()
+                    if data:
+                        message = data.get('message', '').strip()
+                except:
+                    pass
+            
+            print(f"📤 دریافت مختلط: message={message[:50] if message else 'None'}, file={'Yes' if file else 'No'}")
+        
+        # اعتبارسنجی
+        if not message and not file:
+            return jsonify({'success': False, 'error': 'پیام یا فایل الزامی است'}), 400
+        
+        if len(message) > 2000:
             return jsonify({'success': False, 'error': 'پیام بیش از حد طولانی است'}), 400
         
         user = session.get('user_info')
+        
+        # پردازش فایل
+        attachment_type = 'none'
+        attachment_name = ''
+        attachment_path = ''
+        attachment_size = ''
+        
+        if file:
+            att_type, att_name, att_path, result = save_uploaded_file(file)
+            if att_type == 'error':
+                return jsonify({'success': False, 'error': result}), 400
+            
+            attachment_type = att_type
+            attachment_name = att_name
+            attachment_path = att_path
+            attachment_size = result
         
         # بارگذاری پیام‌های موجود
         messages_df = load_messages()
@@ -7385,7 +7432,7 @@ def chat_send_message():
         now = datetime.now()
         jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
         
-        # ایجاد پیام جدید
+        # پیام جدید
         new_message = pd.DataFrame([{
             'MessageID': get_next_message_id(),
             'SenderCode': user['Codev'],
@@ -7395,16 +7442,31 @@ def chat_send_message():
             'JalaliDate': jalali_now.strftime('%Y/%m/%d'),
             'JalaliTime': jalali_now.strftime('%H:%M'),
             'IsRead': False,
-            'ReadBy': ''
+            'ReadBy': '',
+            'IsEdited': False,
+            'IsDeleted': False,
+            'AttachmentType': attachment_type,
+            'AttachmentName': attachment_name,
+            'AttachmentPath': attachment_path,
+            'AttachmentSize': attachment_size
         }])
         
-        # اضافه کردن پیام
-        messages_df = pd.concat([messages_df, new_message], ignore_index=True) if not messages_df.empty else new_message
+        # ترکیب با پیام‌های موجود
+        if messages_df.empty:
+            try:
+                all_messages = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
+                messages_df = pd.concat([all_messages, new_message], ignore_index=True)
+            except:
+                messages_df = new_message
+        else:
+            all_messages = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
+            messages_df = pd.concat([all_messages, new_message], ignore_index=True)
         
         # ذخیره
         if save_messages(messages_df):
-            # به‌روزرسانی فعالیت کاربر
             update_user_activity(user['Codev'], user['Namev'])
+            
+            print(f"✅ پیام ارسال شد: {user['Namev']} - {message[:30]}")
             
             return jsonify({
                 'success': True,
@@ -7418,7 +7480,57 @@ def chat_send_message():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
+        
+def save_uploaded_file(file):
+    """ذخیره فایل آپلود شده"""
+    try:
+        if not file or file.filename == '':
+            return 'error', '', '', 'فایل نامعتبر است'
+        
+        # بررسی پسوند
+        filename = secure_filename(file.filename)
+        file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        
+        if file_ext not in ALLOWED_EXTENSIONS:
+            return 'error', '', '', f'فرمت {file_ext} مجاز نیست'
+        
+        # بررسی حجم
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+        
+        if file_size > MAX_FILE_SIZE:
+            return 'error', '', '', 'حجم فایل بیش از 10MB است'
+        
+        # تشخیص نوع فایل
+        if file_ext in ['png', 'jpg', 'jpeg', 'gif']:
+            att_type = 'image'
+        else:
+            att_type = 'file'
+        
+        # نام یکتا
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{uuid.uuid4().hex[:8]}_{filename}"
+        
+        # مسیر ذخیره
+        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+        
+        # ذخیره
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        file.save(file_path)
+        
+        # حجم به KB
+        size_kb = round(file_size / 1024, 1)
+        
+        print(f"✅ فایل ذخیره شد: {unique_filename} ({size_kb} KB)")
+        
+        return att_type, filename, file_path, f"{size_kb} KB"
+        
+    except Exception as e:
+        print(f"❌ خطا در ذخیره فایل: {e}")
+        return 'error', '', '', str(e)
+        
+        
 @app.route('/api/chat/messages')
 def chat_get_messages():
     """دریافت پیام‌ها"""
@@ -7697,7 +7809,9 @@ def detailed_brand_report():
     if user['Typev'] == 'admin':
         users_df = load_users_from_excel()
         if not users_df.empty:
+            # فقط کاربران عادی (user)
             salespersons = users_df[users_df['Typev'] == 'user'].to_dict('records')
+            print(f"✅ لیست بازاریاب‌ها برای ادمین: {len(salespersons)} نفر")
     
     return render_template('detailed_brand_report.html', 
                          user=user,
@@ -7782,6 +7896,7 @@ def api_detailed_brand_sales_report():
         print(f"   از تاریخ: {date_from}")
         print(f"   تا تاریخ: {date_to}")
         print(f"   برندهای انتخابی: {len(selected_brands)}")
+        print(f"   کد بازاریاب دریافتی: {salesperson_code}")
         
         # تبدیل تاریخ شمسی به میلادی
         date_from_gregorian = jalali_to_gregorian(date_from)
@@ -7793,25 +7908,30 @@ def api_detailed_brand_sales_report():
         print(f"   تاریخ میلادی: {date_from_gregorian} تا {date_to_gregorian}")
         
         # تعیین بازاریاب
+        filter_by_salesperson = False
+        
         if user['Typev'] == 'admin':
+            # ✅ ادمین: اگر "همه" انتخاب شد
             if salesperson_code == 'all':
                 target_salesperson = 'کل مجموعه'
-                filter_by_salesperson = False
-                print(f"   بازاریاب: همه بازاریاب‌ها")
+                filter_by_salesperson = False  # فیلتر نمی‌کند
+                print(f"   ✅ حالت: همه بازاریاب‌ها (فیلتر ندارد)")
             else:
+                # ✅ ادمین: یک بازاریاب خاص انتخاب شد
                 users_df = load_users_from_excel()
                 target_user = users_df[users_df['Codev'] == salesperson_code]
                 if not target_user.empty:
                     target_salesperson = target_user.iloc[0]['Namev']
                 else:
                     target_salesperson = salesperson_code
-                filter_by_salesperson = True
-                print(f"   بازاریاب: {target_salesperson} ({salesperson_code})")
+                filter_by_salesperson = True  # فیلتر می‌کند
+                print(f"   ✅ حالت: بازاریاب خاص - {target_salesperson} ({salesperson_code})")
         else:
+            # ✅ کاربر عادی: فقط فروش خودش
             salesperson_code = user['Codev']
             target_salesperson = user['Namev']
-            filter_by_salesperson = True
-            print(f"   بازاریاب: {target_salesperson} (خودش)")
+            filter_by_salesperson = True  # فیلتر می‌کند
+            print(f"   ✅ حالت: کاربر عادی - {target_salesperson} ({salesperson_code})")
         
         # بارگذاری داده‌ها
         sales_df = load_sales_from_excel()
@@ -7832,13 +7952,10 @@ def api_detailed_brand_sales_report():
         date_column = None
         if 'JalaliDate' in sales_df.columns:
             date_column = 'JalaliDate'
-            use_jalali = True
         elif 'InvoiceDate' in sales_df.columns:
             date_column = 'InvoiceDate'
-            use_jalali = False
         elif 'SaleDate' in sales_df.columns:
             date_column = 'SaleDate'
-            use_jalali = False
         else:
             return jsonify({'success': False, 'error': 'ستون تاریخ در فایل یافت نشد'}), 500
         
@@ -7869,30 +7986,44 @@ def api_detailed_brand_sales_report():
         # حذف ردیف‌های بدون تاریخ
         sales_df_copy = sales_df_copy.dropna(subset=['DateConverted'])
         
+        print(f"   فروش کل: {len(sales_df_copy)} سفارش")
+        
         # فیلتر بر اساس تاریخ
         sales_filtered = sales_df_copy[
             (sales_df_copy['DateConverted'] >= date_from_gregorian) & 
             (sales_df_copy['DateConverted'] <= date_to_gregorian)
         ].copy()
         
-        print(f"\n   فروش در بازه زمانی: {len(sales_filtered)} سفارش")
+        print(f"   فروش در بازه زمانی: {len(sales_filtered)} سفارش")
         
-        # فیلتر بر اساس بازاریاب
+        # ✅ فیلتر بر اساس بازاریاب (فقط اگر لازم باشد)
         if filter_by_salesperson:
+            print(f"   🔍 فیلتر بازاریاب فعال: {salesperson_code}")
+            
             # تشخیص نام ستون بازاریاب
             salesperson_column = None
             if 'SalespersonCode' in sales_filtered.columns:
                 salesperson_column = 'SalespersonCode'
+                print(f"   ✅ ستون بازاریاب: SalespersonCode")
             elif 'VisitorCode' in sales_filtered.columns:
                 salesperson_column = 'VisitorCode'
+                print(f"   ✅ ستون بازاریاب: VisitorCode")
             elif 'BazaryabCode' in sales_filtered.columns:
                 salesperson_column = 'BazaryabCode'
+                print(f"   ✅ ستون بازاریاب: BazaryabCode")
             
             if salesperson_column:
+                # فیلتر
+                before_filter = len(sales_filtered)
                 sales_filtered = sales_filtered[
-                    sales_filtered[salesperson_column] == salesperson_code
+                    sales_filtered[salesperson_column].astype(str).str.strip() == str(salesperson_code).strip()
                 ]
-                print(f"   فروش بازاریاب: {len(sales_filtered)} سفارش")
+                after_filter = len(sales_filtered)
+                print(f"   فروش بازاریاب: {before_filter} → {after_filter} سفارش")
+            else:
+                print(f"   ⚠️ ستون بازاریاب یافت نشد - فیلتر اعمال نمی‌شود")
+        else:
+            print(f"   ℹ️  فیلتر بازاریاب غیرفعال (همه بازاریاب‌ها)")
         
         if sales_filtered.empty:
             return jsonify({
@@ -8005,6 +8136,7 @@ def api_detailed_brand_sales_report():
 
 
 print("✅ سیستم گزارش فروش برندی تفصیلی آماده شد!")
+
 
 
 if __name__ == '__main__':
