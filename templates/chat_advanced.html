@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>چت گروهی پیشرفته</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .chat-wrapper {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* هدر */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 15px 15px 0 0;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .chat-header h1 {
+            font-size: 22px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .online-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        /* منطقه پیام‌ها */
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 25px;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: messageSlide 0.3s ease;
+            max-width: 70%;
+            position: relative;
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.my-message {
+            margin-right: auto;
+            flex-direction: row-reverse;
+        }
+        
+        .message.other-message {
+            margin-left: auto;
+        }
+        
+        .message-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .message.my-message .message-avatar {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .message-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+        
+        .message-info {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .message.my-message .message-info {
+            flex-direction: row-reverse;
+        }
+        
+        .sender-name {
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .message.my-message .sender-name {
+            color: #f5576c;
+        }
+        
+        .message-time {
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .message-bubble {
+            background: white;
+            padding: 14px 18px;
+            border-radius: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            word-wrap: break-word;
+            line-height: 1.6;
+            font-size: 15px;
+            color: #333;
+            position: relative;
+        }
+        
+        .message.my-message .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* دکمه‌های ویرایش و حذف */
+        .message-actions {
+            position: absolute;
+            left: -80px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: none;
+            gap: 5px;
+        }
+        
+        .message.my-message:hover .message-actions {
+            display: flex;
+        }
+        
+        .message.my-message .message-actions {
+            left: auto;
+            right: -80px;
+        }
+        
+        .action-btn {
+            background: white;
+            border: 1px solid #e1e1e1;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        
+        .action-btn.edit-btn:hover {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .action-btn.delete-btn:hover {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+        
+        /* پیام ویرایش شده */
+        .edited-badge {
+            font-size: 11px;
+            color: #999;
+            font-style: italic;
+            margin-top: 4px;
+        }
+        
+        .message.my-message .edited-badge {
+            color: rgba(255,255,255,0.7);
+        }
+        
+        /* فایل‌های پیوست شده */
+        .message-attachment {
+            margin-top: 10px;
+            display: inline-block;
+        }
+        
+        .attachment-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .attachment-image:hover {
+            transform: scale(1.02);
+        }
+        
+        .attachment-file {
+            background: rgba(0,0,0,0.05);
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .message.my-message .attachment-file {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .attachment-file:hover {
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .message.my-message .attachment-file:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .attachment-icon {
+            font-size: 24px;
+        }
+        
+        .attachment-info {
+            flex: 1;
+        }
+        
+        .attachment-name {
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .attachment-size {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+        
+        /* ورودی پیام */
+        .input-area {
+            padding: 20px 25px;
+            background: white;
+            border-top: 2px solid #e1e1e1;
+            border-radius: 0 0 15px 15px;
+        }
+        
+        .editing-mode {
+            background: #fff3cd;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .editing-mode.active {
+            display: flex;
+        }
+        
+        .editing-text {
+            color: #856404;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .cancel-edit-btn {
+            background: transparent;
+            border: none;
+            color: #856404;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .cancel-edit-btn:hover {
+            background: rgba(0,0,0,0.1);
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        
+        .input-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .message-input {
+            width: 100%;
+            padding: 14px 20px;
+            border: 2px solid #e1e1e1;
+            border-radius: 25px;
+            font-size: 15px;
+            font-family: inherit;
+            transition: all 0.3s;
+            resize: none;
+            max-height: 120px;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .file-preview {
+            display: none;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .file-preview.active {
+            display: flex;
+        }
+        
+        .preview-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .preview-info {
+            flex: 1;
+        }
+        
+        .preview-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .preview-size {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .remove-file-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .remove-file-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .attach-btn {
+            background: #f8f9fa;
+            color: #667eea;
+            border: 2px solid #e1e1e1;
+            padding: 14px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .attach-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .send-btn:active {
+            transform: translateY(0);
+        }
+        
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Modal برای تصویر */
+        .image-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s;
+        }
+        
+        .image-modal.active {
+            display: flex;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-image {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            color: #333;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .close-modal:hover {
+            transform: scale(1.1);
+            background: #f8f9fa;
+        }
+        
+        /* حالت خالی */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-icon {
+            font-size: 70px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        /* لودینگ */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* نوتیفیکیشن */
+        .notification {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: #4ade80;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 25px;
+            box-shadow: 0 8px 24px rgba(74, 222, 128, 0.4);
+            display: none;
+            animation: slideDown 0.4s ease forwards;
+            z-index: 2000;
+            font-weight: 500;
+        }
+        
+        .notification.show {
+            display: block;
+        }
+        
+        .notification.error {
+            background: #ef4444;
+        }
+        
+        @keyframes slideDown {
+            to {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        
+        /* اسکرول بار */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .chat-wrapper {
+                height: 92vh;
+                border-radius: 10px;
+            }
+            
+            .chat-header {
+                padding: 15px 20px;
+            }
+            
+            .messages-container {
+                padding: 15px;
+            }
+            
+            .message {
+                max-width: 85%;
+            }
+            
+            .message-actions {
+                position: static;
+                transform: none;
+                margin-top: 8px;
+                justify-content: flex-end;
+            }
+            
+            .message.my-message:hover .message-actions,
+            .message-actions {
+                display: flex !important;
+            }
+            
+            .input-area {
+                padding: 15px;
+            }
+            
+            .buttons-row {
+                flex-direction: column;
+            }
+            
+            .attach-btn,
+            .send-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-wrapper">
+        <!-- هدر -->
+        <div class="chat-header">
+            <h1>💬 چت گروهی پیشرفته</h1>
+            <div class="header-right">
+                <div class="online-badge">
+                    <span class="online-dot"></span>
+                    <span id="online-count">0</span> آنلاین
+                </div>
+                <a href="{{ url_for('index') }}" class="back-btn">🏠 بازگشت</a>
+            </div>
+        </div>
+        
+        <!-- منطقه پیام‌ها -->
+        <div class="messages-container" id="messages-container">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>در حال بارگذاری پیام‌ها...</p>
+            </div>
+        </div>
+        
+        <!-- ورودی پیام -->
+        <div class="input-area">
+            <!-- نوار ویرایش -->
+            <div class="editing-mode" id="editing-mode">
+                <span class="editing-text">✏️ در حال ویرایش پیام...</span>
+                <button class="cancel-edit-btn" onclick="cancelEdit()">❌ لغو</button>
+            </div>
+            
+            <div class="input-wrapper">
+                <div class="input-column">
+                    <textarea 
+                        class="message-input" 
+                        id="message-input" 
+                        placeholder="پیام خود را بنویسید..."
+                        maxlength="2000"
+                        rows="1"
+                    ></textarea>
+                    
+                    <!-- پیش‌نمایش فایل -->
+                    <div class="file-preview" id="file-preview">
+                        <img id="preview-image" class="preview-image" style="display:none">
+                        <div class="preview-info">
+                            <div class="preview-name" id="preview-name"></div>
+                            <div class="preview-size" id="preview-size"></div>
+                        </div>
+                        <button class="remove-file-btn" onclick="removeFile()">✖</button>
+                    </div>
+                </div>
+                
+                <div class="buttons-row">
+                    <input type="file" id="file-input" class="file-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onchange="handleFileSelect(event)">
+                    <button class="attach-btn" onclick="document.getElementById('file-input').click()">
+                        📎 پیوست
+                    </button>
+                    <button class="send-btn" id="send-btn" onclick="sendMessage()">
+                        📤 ارسال
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal تصویر -->
+    <div class="image-modal" id="image-modal" onclick="closeImageModal()">
+        <button class="close-modal">✖</button>
+        <img id="modal-image" class="modal-image">
+    </div>
+    
+    <!-- نوتیفیکیشن -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // اطلاعات کاربر
+        const currentUser = {
+            code: '{{ user.Codev }}',
+            name: '{{ user.Namev }}'
+        };
+        
+        let lastMessageId = 0;
+        let isAtBottom = true;
+        let editingMessageId = null;
+        let selectedFile = null;
+        
+        // بارگذاری اولیه
+        window.addEventListener('load', () => {
+            loadMessages();
+            updateOnlineCount();
+            
+            setInterval(loadMessages, 2000);
+            setInterval(updateOnlineCount, 5000);
+            
+            const textarea = document.getElementById('message-input');
+            textarea.addEventListener('input', autoResize);
+        });
+        
+        // Enter برای ارسال
+        document.getElementById('message-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        // تشخیص اسکرول
+        const container = document.getElementById('messages-container');
+        container.addEventListener('scroll', () => {
+            const threshold = 100;
+            isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+        });
+        
+        // Auto-resize textarea
+        function autoResize() {
+            const textarea = document.getElementById('message-input');
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+        
+        // انتخاب فایل
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // بررسی حجم (حداکثر 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                showNotification('❌ حجم فایل نباید بیشتر از 10MB باشد', 'error');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            // نمایش پیش‌نمایش
+            const preview = document.getElementById('file-preview');
+            const previewImage = document.getElementById('preview-image');
+            const previewName = document.getElementById('preview-name');
+            const previewSize = document.getElementById('preview-size');
+            
+            previewName.textContent = file.name;
+            previewSize.textContent = formatFileSize(file.size);
+            
+            // اگر تصویر است
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImage.src = e.target.result;
+                    previewImage.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewImage.style.display = 'none';
+            }
+            
+            preview.classList.add('active');
+        }
+        
+        // حذف فایل
+        function removeFile() {
+            selectedFile = null;
+            document.getElementById('file-input').value = '';
+            document.getElementById('file-preview').classList.remove('active');
+        }
+        
+        // فرمت حجم فایل
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        // ارسال پیام
+        async function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (!message && !selectedFile) {
+                showNotification('❌ لطفاً پیام یا فایل انتخاب کنید', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('send-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ در حال ارسال...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('message', message);
+                
+                if (editingMessageId) {
+                    formData.append('message_id', editingMessageId);
+                }
+                
+                if (selectedFile) {
+                    formData.append('file', selectedFile);
+                }
+                
+                const url = editingMessageId ? '/api/chat/edit' : '/api/chat/send';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    input.value = '';
+                    input.style.height = 'auto';
+                    removeFile();
+                    cancelEdit();
+                    await loadMessages();
+                    scrollToBottom();
+                    showNotification(editingMessageId ? '✅ پیام ویرایش شد' : '✅ پیام ارسال شد');
+                } else {
+                    showNotification('❌ ' + (data.error || 'خطا در ارسال'), 'error');
+                }
+            } catch (error) {
+                console.error('خطا:', error);
+                showNotification('❌ خطا در ارسال پیام!', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📤 ارسال';
+            }
+        }
+        
+        // ویرایش پیام
+        function editMessage(messageId, currentText) {
+            editingMessageId = messageId;
+            document.getElementById('message-input').value = currentText;
+            document.getElementById('editing-mode').classList.add('active');
+            document.getElementById('message-input').focus();
+            autoResize();
+        }
+        
+        // لغو ویرایش
+        function cancelEdit() {
+            editingMessageId = null;
+            document.getElementById('editing-mode').classList.remove('active');
+        }
+        
+        // حذف پیام
+        async function deleteMessage(messageId) {
+            if (!confirm('آیا مطمئن هستید که می‌خواهید این پیام را حذف کنید؟')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/chat/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message_id: messageId })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('✅ پیام حذف شد');
+                    await loadMessages();
+                } else {
+                    showNotification('❌ ' + (data.error || 'خطا در حذف'), 'error');
+                }
+            } catch (error) {
+                console.error('خطا:', error);
+                showNotification('❌ خطا در حذف پیام!', 'error');
+            }
+        }
+        
+        // بارگذاری پیام‌ها
+        async function loadMessages() {
+            try {
+                const response = await fetch('/api/chat/messages');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('messages-container');
+                    const loading = document.getElementById('loading');
+                    
+                    if (loading) {
+                        loading.remove();
+                    }
+                    
+                    if (data.messages.length > 0) {
+                        const latestMsg = data.messages[data.messages.length - 1];
+                        
+                        if (latestMsg.MessageID > lastMessageId) {
+                            if (latestMsg.SenderCode !== currentUser.code) {
+                                showNotification('💬 پیام جدید از ' + latestMsg.SenderName);
+                            }
+                            lastMessageId = latestMsg.MessageID;
+                        }
+                    }
+                    
+                    renderMessages(data.messages);
+                    
+                    if (isAtBottom) {
+                        scrollToBottom();
+                    }
+                }
+            } catch (error) {
+                console.error('خطا در بارگذاری:', error);
+            }
+        }
+        
+        // نمایش پیام‌ها
+        function renderMessages(messages) {
+            const container = document.getElementById('messages-container');
+            
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <h3>هنوز پیامی نیست</h3>
+                        <p>اولین نفری باشید که پیام می‌فرستد!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = '';
+            
+            messages.forEach(msg => {
+                const isMyMessage = msg.SenderCode === currentUser.code;
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isMyMessage ? 'my-message' : 'other-message'}`;
+                
+                const initial = msg.SenderName.charAt(0);
+                
+                let attachmentHTML = '';
+                if (msg.AttachmentType) {
+                    if (msg.AttachmentType === 'image') {
+                        attachmentHTML = `
+                            <div class="message-attachment">
+                                <img src="${msg.AttachmentPath}" class="attachment-image" onclick="openImageModal('${msg.AttachmentPath}')">
+                            </div>
+                        `;
+                    } else {
+                        attachmentHTML = `
+                            <div class="message-attachment">
+                                <div class="attachment-file" onclick="window.open('${msg.AttachmentPath}', '_blank')">
+                                    <span class="attachment-icon">📄</span>
+                                    <div class="attachment-info">
+                                        <div class="attachment-name">${escapeHtml(msg.AttachmentName)}</div>
+                                        <div class="attachment-size">${msg.AttachmentSize}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                const editedBadge = msg.IsEdited ? '<div class="edited-badge">ویرایش شده</div>' : '';
+                
+                const actionsHTML = isMyMessage ? `
+                    <div class="message-actions">
+                        <button class="action-btn edit-btn" onclick="editMessage(${msg.MessageID}, '${escapeHtml(msg.MessageText).replace(/'/g, "\\'")}')">
+                            ✏️
+                        </button>
+                        <button class="action-btn delete-btn" onclick="deleteMessage(${msg.MessageID})">
+                            🗑️
+                        </button>
+                    </div>
+                ` : '';
+                
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">${escapeHtml(initial)}</div>
+                    <div class="message-content">
+                        <div class="message-info">
+                            <span class="sender-name">${escapeHtml(msg.SenderName)}</span>
+                            <span class="message-time">${escapeHtml(msg.JalaliTime)} • ${escapeHtml(msg.JalaliDate)}</span>
+                        </div>
+                        <div class="message-bubble">
+                            ${escapeHtml(msg.MessageText)}
+                            ${attachmentHTML}
+                            ${editedBadge}
+                        </div>
+                    </div>
+                    ${actionsHTML}
+                `;
+                
+                container.appendChild(messageDiv);
+            });
+        }
+        
+        // باز کردن modal تصویر
+        function openImageModal(imagePath) {
+            document.getElementById('modal-image').src = imagePath;
+            document.getElementById('image-modal').classList.add('active');
+        }
+        
+        // بستن modal
+        function closeImageModal() {
+            document.getElementById('image-modal').classList.remove('active');
+        }
+        
+        // اسکرول به پایین
+        function scrollToBottom() {
+            const container = document.getElementById('messages-container');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // نمایش نوتیفیکیشن
+        function showNotification(text, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = text;
+            notification.className = 'notification show' + (type === 'error' ? ' error' : '');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // بروزرسانی تعداد آنلاین
+        async function updateOnlineCount() {
+            try {
+                const response = await fetch('/api/chat/online-count');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('online-count').textContent = data.count;
+                }
+            } catch (error) {
+                console.error('خطا در دریافت تعداد آنلاین:', error);
+            }
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Heartbeat
+        setInterval(() => {
+            fetch('/api/chat/heartbeat', { method: 'POST' });
+        }, 30000);
+        
+        fetch('/api/chat/heartbeat', { method: 'POST' });
+        
+        console.log('✅ سیستم چت پیشرفته بارگذاری شد');
+    </script>
+</body>
+</html>
