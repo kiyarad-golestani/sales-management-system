@@ -15,7 +15,8 @@ from datetime import timedelta
 from math import radians, sin, cos, sqrt, atan2
 from pytz import timezone as pytz_timezone
 from collections import defaultdict
-
+from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-2024'
@@ -24,9 +25,13 @@ app.secret_key = 'your-secret-key-2024'
 USERS_FILE = 'users.xlsx'
 CUSTOMERS_FILE = 'customers.xlsx'
 VISITS_FILE = 'visits.xlsx'
-EXAMS_FILE = 'azmon.xlsx'  # ← این خط را اضافه کنید
+EXAMS_FILE = 'azmon.xlsx'  
 MESSAGES_FILE = 'messages.xlsx'
 USER_STATUS_FILE = 'user_status.xlsx'
+UPLOAD_FOLDER = 'static/chat_uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """محاسبه فاصله بین دو نقطه جغرافیایی به متر (فرمول Haversine)"""
@@ -7179,9 +7184,19 @@ def load_reports_from_excel():
 # ===============================
 # پایان کدهای آزمون
 # ===============================
+
+# ==============================================
+# توابع کمکی
+# ==============================================
+
 def init_chat_files():
-    """ایجاد فایل‌های چت در صورت عدم وجود"""
+    """ایجاد فایل‌ها و پوشه‌های مورد نیاز"""
     try:
+        # ایجاد پوشه آپلود
+        if not os.path.exists(UPLOAD_FOLDER):
+            os.makedirs(UPLOAD_FOLDER)
+            print(f"✅ پوشه {UPLOAD_FOLDER} ایجاد شد")
+        
         # فایل پیام‌ها
         if not os.path.exists(MESSAGES_FILE):
             df = pd.DataFrame(columns=[
@@ -7193,7 +7208,13 @@ def init_chat_files():
                 'JalaliDate',
                 'JalaliTime',
                 'IsRead',
-                'ReadBy'
+                'ReadBy',
+                'IsEdited',
+                'IsDeleted',
+                'AttachmentType',
+                'AttachmentName',
+                'AttachmentPath',
+                'AttachmentSize'
             ])
             df.to_excel(MESSAGES_FILE, sheet_name='messages', index=False)
             print("✅ فایل messages.xlsx ایجاد شد")
@@ -7213,6 +7234,7 @@ def init_chat_files():
     except Exception as e:
         print(f"❌ خطا در ایجاد فایل‌های چت: {e}")
 
+
 def load_messages():
     """بارگذاری پیام‌ها"""
     try:
@@ -7227,12 +7249,26 @@ def load_messages():
         for col in df.columns:
             if df[col].dtype == 'object':
                 df[col] = df[col].fillna('')
+            elif df[col].dtype in ['int64', 'float64']:
+                df[col] = df[col].fillna(0)
+        
+        # ✅ اصلاح: فیلتر پیام‌های حذف نشده
+        if not df.empty and 'IsDeleted' in df.columns:
+            # تبدیل به boolean صریح
+            df['IsDeleted'] = df['IsDeleted'].fillna(False).astype(bool)
+            # فیلتر: فقط پیام‌های حذف نشده
+            df = df[~df['IsDeleted']]  # ← استفاده از ~ به جای == False
+        
+        print(f"✅ بارگذاری پیام‌ها: {len(df)} پیام")
         
         return df
         
     except Exception as e:
         print(f"❌ خطا در بارگذاری پیام‌ها: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
+
 
 def save_messages(df):
     """ذخیره پیام‌ها"""
@@ -7243,244 +7279,23 @@ def save_messages(df):
         print(f"❌ خطا در ذخیره پیام‌ها: {e}")
         return False
 
-def load_user_status():
-    """بارگذاری وضعیت کاربران"""
-    try:
-        init_chat_files()
-        
-        if not os.path.exists(USER_STATUS_FILE):
-            return pd.DataFrame()
-        
-        df = pd.read_excel(USER_STATUS_FILE, sheet_name='status')
-        
-        # پاک کردن NaN
-        for col in df.columns:
-            if df[col].dtype == 'object':
-                df[col] = df[col].fillna('')
-        
-        return df
-        
-    except Exception as e:
-        print(f"❌ خطا در بارگذاری وضعیت: {e}")
-        return pd.DataFrame()
-
-def save_user_status(df):
-    """ذخیره وضعیت کاربران"""
-    try:
-        df.to_excel(USER_STATUS_FILE, sheet_name='status', index=False)
-        return True
-    except Exception as e:
-        print(f"❌ خطا در ذخیره وضعیت: {e}")
-        return False
-
 def get_next_message_id():
     """دریافت شناسه پیام بعدی"""
-    df = load_messages()
-    if df.empty:
-        return 1
-    return int(df['MessageID'].max()) + 1
-
-def update_user_activity(user_code, user_name):
-    """به‌روزرسانی فعالیت کاربر"""
     try:
-        df = load_user_status()
-        now = datetime.now()
+        if not os.path.exists(MESSAGES_FILE):
+            return 1
         
-        # چک کردن وجود کاربر
-        user_exists = False
-        if not df.empty:
-            mask = df['UserCode'] == user_code
-            if mask.any():
-                user_exists = True
-                df.loc[mask, 'LastActivity'] = now.strftime('%Y-%m-%d %H:%M:%S')
-                df.loc[mask, 'IsOnline'] = True
-        
-        # اگر کاربر جدید است
-        if not user_exists:
-            new_user = pd.DataFrame([{
-                'UserCode': user_code,
-                'UserName': user_name,
-                'IsOnline': True,
-                'LastActivity': now.strftime('%Y-%m-%d %H:%M:%S'),
-                'LastSeen': now.strftime('%Y-%m-%d %H:%M:%S')
-            }])
-            
-            df = pd.concat([df, new_user], ignore_index=True) if not df.empty else new_user
-        
-        save_user_status(df)
-        return True
-        
-    except Exception as e:
-        print(f"❌ خطا در به‌روزرسانی فعالیت: {e}")
-        return False
-
-def get_online_users_count():
-    """شمارش کاربران آنلاین"""
-    try:
-        df = load_user_status()
-        
+        df = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
         if df.empty:
-            return 0
+            return 1
         
-        now = datetime.now()
-        online_count = 0
-        
-        for _, row in df.iterrows():
-            try:
-                last_activity = datetime.strptime(str(row['LastActivity']), '%Y-%m-%d %H:%M:%S')
-                seconds_diff = (now - last_activity).total_seconds()
-                
-                # اگر در 5 دقیقه گذشته فعال بوده
-                if seconds_diff < 300:  # 5 minutes
-                    online_count += 1
-            except:
-                continue
-        
-        return online_count
+        return int(df['MessageID'].max()) + 1
         
     except Exception as e:
-        print(f"❌ خطا در شمارش آنلاین: {e}")
-        return 0
+        print(f"❌ خطا در دریافت MessageID: {e}")
+        return 1
 
-# ==============================================
-# Routes
-# ==============================================
 
-@app.route('/chat')
-def chat():
-    """صفحه چت"""
-    if 'user_id' not in session:
-        flash('لطفاً ابتدا وارد شوید', 'error')
-        return redirect(url_for('login'))
-    
-    user = session.get('user_info')
-    
-    # به‌روزرسانی وضعیت آنلاین
-    update_user_activity(user['Codev'], user['Namev'])
-    
-    return render_template('chat.html', user=user)
-
-@app.route('/api/chat/send', methods=['POST'])
-def chat_send_message():
-    """ارسال پیام جدید - پشتیبانی از JSON و FormData"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
-    
-    try:
-        # ✅ تشخیص نوع درخواست
-        content_type = request.content_type
-        
-        # اگر FormData است (فایل دارد)
-        if content_type and 'multipart/form-data' in content_type:
-            message = request.form.get('message', '').strip()
-            file = request.files.get('file')
-            print(f"📤 دریافت FormData: message={message[:50] if message else 'None'}, file={file.filename if file else 'None'}")
-        
-        # اگر JSON است (فقط متن)
-        elif content_type and 'application/json' in content_type:
-            data = request.get_json()
-            message = data.get('message', '').strip()
-            file = None
-            print(f"📤 دریافت JSON: message={message[:50] if message else 'None'}")
-        
-        # اگر هیچکدام نیست - سعی در دریافت به هر دو شکل
-        else:
-            # ابتدا سعی در دریافت از form
-            message = request.form.get('message', '').strip()
-            file = request.files.get('file') if hasattr(request, 'files') else None
-            
-            # اگر خالی بود، سعی در دریافت از JSON
-            if not message and not file:
-                try:
-                    data = request.get_json()
-                    if data:
-                        message = data.get('message', '').strip()
-                except:
-                    pass
-            
-            print(f"📤 دریافت مختلط: message={message[:50] if message else 'None'}, file={'Yes' if file else 'No'}")
-        
-        # اعتبارسنجی
-        if not message and not file:
-            return jsonify({'success': False, 'error': 'پیام یا فایل الزامی است'}), 400
-        
-        if len(message) > 2000:
-            return jsonify({'success': False, 'error': 'پیام بیش از حد طولانی است'}), 400
-        
-        user = session.get('user_info')
-        
-        # پردازش فایل
-        attachment_type = 'none'
-        attachment_name = ''
-        attachment_path = ''
-        attachment_size = ''
-        
-        if file:
-            att_type, att_name, att_path, result = save_uploaded_file(file)
-            if att_type == 'error':
-                return jsonify({'success': False, 'error': result}), 400
-            
-            attachment_type = att_type
-            attachment_name = att_name
-            attachment_path = att_path
-            attachment_size = result
-        
-        # بارگذاری پیام‌های موجود
-        messages_df = load_messages()
-        
-        # تاریخ و زمان
-        now = datetime.now()
-        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
-        
-        # پیام جدید
-        new_message = pd.DataFrame([{
-            'MessageID': get_next_message_id(),
-            'SenderCode': user['Codev'],
-            'SenderName': user['Namev'],
-            'MessageText': message,
-            'Timestamp': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'JalaliDate': jalali_now.strftime('%Y/%m/%d'),
-            'JalaliTime': jalali_now.strftime('%H:%M'),
-            'IsRead': False,
-            'ReadBy': '',
-            'IsEdited': False,
-            'IsDeleted': False,
-            'AttachmentType': attachment_type,
-            'AttachmentName': attachment_name,
-            'AttachmentPath': attachment_path,
-            'AttachmentSize': attachment_size
-        }])
-        
-        # ترکیب با پیام‌های موجود
-        if messages_df.empty:
-            try:
-                all_messages = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
-                messages_df = pd.concat([all_messages, new_message], ignore_index=True)
-            except:
-                messages_df = new_message
-        else:
-            all_messages = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
-            messages_df = pd.concat([all_messages, new_message], ignore_index=True)
-        
-        # ذخیره
-        if save_messages(messages_df):
-            update_user_activity(user['Codev'], user['Namev'])
-            
-            print(f"✅ پیام ارسال شد: {user['Namev']} - {message[:30]}")
-            
-            return jsonify({
-                'success': True,
-                'message_id': int(new_message.iloc[0]['MessageID'])
-            })
-        else:
-            return jsonify({'success': False, 'error': 'خطا در ذخیره پیام'}), 500
-            
-    except Exception as e:
-        print(f"❌ خطا در ارسال پیام: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-        
 def save_uploaded_file(file):
     """ذخیره فایل آپلود شده"""
     try:
@@ -7528,12 +7343,268 @@ def save_uploaded_file(file):
         
     except Exception as e:
         print(f"❌ خطا در ذخیره فایل: {e}")
+        import traceback
+        traceback.print_exc()
         return 'error', '', '', str(e)
+
+
+def update_user_activity(user_code, user_name):
+    """به‌روزرسانی فعالیت کاربر"""
+    try:
+        if not os.path.exists(USER_STATUS_FILE):
+            init_chat_files()
         
+        status_df = pd.read_excel(USER_STATUS_FILE, sheet_name='status')
         
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # بررسی وجود کاربر
+        if user_code in status_df['UserCode'].values:
+            status_df.loc[status_df['UserCode'] == user_code, 'LastActivity'] = now
+            status_df.loc[status_df['UserCode'] == user_code, 'IsOnline'] = True
+        else:
+            new_user = pd.DataFrame([{
+                'UserCode': user_code,
+                'UserName': user_name,
+                'IsOnline': True,
+                'LastActivity': now,
+                'LastSeen': now
+            }])
+            status_df = pd.concat([status_df, new_user], ignore_index=True)
+        
+        status_df.to_excel(USER_STATUS_FILE, sheet_name='status', index=False)
+        
+    except Exception as e:
+        print(f"❌ خطا در به‌روزرسانی وضعیت: {e}")
+
+
+# ==============================================
+# Routes
+# ==============================================
+
+@app.route('/chat')
+def chat():
+    """صفحه چت گروهی"""
+    if 'user_id' not in session:
+        flash('لطفاً ابتدا وارد شوید', 'error')
+        return redirect(url_for('login'))
+    
+    init_chat_files()
+    
+    user = session.get('user_info')
+    update_user_activity(user['Codev'], user['Namev'])
+    
+    return render_template('chat_advanced.html', user=user)
+
+
+@app.route('/api/chat/send', methods=['POST'])
+def chat_send_message():
+    """ارسال پیام جدید"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        # تشخیص نوع درخواست
+        content_type = request.content_type or ''
+        
+        # دریافت داده‌ها
+        if 'multipart/form-data' in content_type:
+            message = request.form.get('message', '').strip()
+            file = request.files.get('file')
+            print(f"📤 FormData: message={message[:50] if message else 'None'}, file={file.filename if file else 'None'}")
+        elif 'application/json' in content_type:
+            data = request.get_json()
+            message = data.get('message', '').strip()
+            file = None
+            print(f"📤 JSON: message={message[:50] if message else 'None'}")
+        else:
+            message = request.form.get('message', '').strip()
+            file = request.files.get('file') if hasattr(request, 'files') else None
+            print(f"📤 Mixed: message={message[:50] if message else 'None'}")
+        
+        # اعتبارسنجی
+        if not message and not file:
+            return jsonify({'success': False, 'error': 'پیام یا فایل الزامی است'}), 400
+        
+        if len(message) > 2000:
+            return jsonify({'success': False, 'error': 'پیام بیش از حد طولانی است'}), 400
+        
+        user = session.get('user_info')
+        
+        # پردازش فایل
+        attachment_type = 'none'
+        attachment_name = ''
+        attachment_path = ''
+        attachment_size = ''
+        
+        if file:
+            att_type, att_name, att_path, result = save_uploaded_file(file)
+            if att_type == 'error':
+                return jsonify({'success': False, 'error': result}), 400
+            
+            attachment_type = att_type
+            attachment_name = att_name
+            attachment_path = att_path
+            attachment_size = result
+        
+        # تاریخ و زمان
+        now = datetime.now()
+        jalali_now = jdatetime.datetime.fromgregorian(datetime=now)
+        
+        # پیام جدید
+        new_message = pd.DataFrame([{
+            'MessageID': get_next_message_id(),
+            'SenderCode': user['Codev'],
+            'SenderName': user['Namev'],
+            'MessageText': message,
+            'Timestamp': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'JalaliDate': jalali_now.strftime('%Y/%m/%d'),
+            'JalaliTime': jalali_now.strftime('%H:%M'),
+            'IsRead': False,
+            'ReadBy': '',
+            'IsEdited': False,
+            'IsDeleted': False,
+            'AttachmentType': attachment_type,
+            'AttachmentName': attachment_name,
+            'AttachmentPath': attachment_path,
+            'AttachmentSize': attachment_size
+        }])
+        
+        # خواندن همه پیام‌ها (شامل حذف شده‌ها)
+        try:
+            all_messages = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
+            messages_df = pd.concat([all_messages, new_message], ignore_index=True)
+        except:
+            messages_df = new_message
+        
+        # ذخیره
+        if save_messages(messages_df):
+            update_user_activity(user['Codev'], user['Namev'])
+            
+            print(f"✅ پیام ارسال شد: {user['Namev']} - {message[:30]}")
+            
+            return jsonify({
+                'success': True,
+                'message_id': int(new_message.iloc[0]['MessageID'])
+            })
+        else:
+            return jsonify({'success': False, 'error': 'خطا در ذخیره پیام'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ارسال پیام: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/chat/edit', methods=['POST'])
+def chat_edit_message():
+    """ویرایش پیام"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        # دریافت داده‌ها (هر دو فرمت)
+        content_type = request.content_type or ''
+        
+        if 'multipart/form-data' in content_type:
+            message_id = request.form.get('message_id')
+            new_text = request.form.get('message', '').strip()
+        else:
+            data = request.get_json()
+            message_id = data.get('message_id')
+            new_text = data.get('message', '').strip()
+        
+        if not message_id or not new_text:
+            return jsonify({'success': False, 'error': 'شناسه پیام و متن جدید الزامی است'}), 400
+        
+        message_id = int(message_id)
+        user = session.get('user_info')
+        
+        # بارگذاری پیام‌ها (شامل حذف شده‌ها)
+        messages_df = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
+        
+        # پیدا کردن پیام
+        if message_id not in messages_df['MessageID'].values:
+            return jsonify({'success': False, 'error': 'پیام یافت نشد'}), 404
+        
+        # بررسی مالکیت
+        msg_sender = messages_df.loc[messages_df['MessageID'] == message_id, 'SenderCode'].values[0]
+        if str(msg_sender).strip() != str(user['Codev']).strip():
+            return jsonify({'success': False, 'error': 'شما مجاز به ویرایش این پیام نیستید'}), 403
+        
+        # ویرایش
+        messages_df.loc[messages_df['MessageID'] == message_id, 'MessageText'] = new_text
+        messages_df.loc[messages_df['MessageID'] == message_id, 'IsEdited'] = True
+        
+        # ذخیره
+        if save_messages(messages_df):
+            print(f"✅ پیام {message_id} ویرایش شد")
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'خطا در ذخیره'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در ویرایش: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/chat/delete', methods=['POST'])
+def chat_delete_message():
+    """حذف پیام"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        # دریافت داده‌ها
+        data = request.get_json()
+        message_id = data.get('message_id')
+        
+        if not message_id:
+            return jsonify({'success': False, 'error': 'شناسه پیام الزامی است'}), 400
+        
+        message_id = int(message_id)
+        user = session.get('user_info')
+        
+        print(f"🗑️ درخواست حذف پیام {message_id} توسط {user['Namev']}")
+        
+        # بارگذاری پیام‌ها (شامل حذف شده‌ها)
+        messages_df = pd.read_excel(MESSAGES_FILE, sheet_name='messages')
+        
+        # پیدا کردن پیام
+        if message_id not in messages_df['MessageID'].values:
+            return jsonify({'success': False, 'error': 'پیام یافت نشد'}), 404
+        
+        # بررسی مالکیت یا ادمین
+        msg_sender = messages_df.loc[messages_df['MessageID'] == message_id, 'SenderCode'].values[0]
+        is_owner = str(msg_sender).strip() == str(user['Codev']).strip()
+        is_admin = user.get('Typev') == 'admin'
+        
+        if not is_owner and not is_admin:
+            return jsonify({'success': False, 'error': 'شما مجاز به حذف این پیام نیستید'}), 403
+        
+        # علامت‌گذاری به عنوان حذف شده
+        messages_df.loc[messages_df['MessageID'] == message_id, 'IsDeleted'] = True
+        
+        # ذخیره
+        if save_messages(messages_df):
+            print(f"✅ پیام {message_id} حذف شد")
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'خطا در ذخیره'}), 500
+            
+    except Exception as e:
+        print(f"❌ خطا در حذف پیام: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/chat/messages')
 def chat_get_messages():
-    """دریافت پیام‌ها"""
+    """دریافت لیست پیام‌ها"""
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
     
@@ -7543,45 +7614,71 @@ def chat_get_messages():
         if messages_df.empty:
             return jsonify({'success': True, 'messages': []})
         
-        # مرتب‌سازی بر اساس MessageID
-        messages_df = messages_df.sort_values('MessageID')
-        
         # تبدیل به لیست
         messages_list = []
         for _, msg in messages_df.iterrows():
             messages_list.append({
+                # ✅ اصلاح: استفاده از نام‌های مطابق HTML
                 'MessageID': int(msg['MessageID']),
                 'SenderCode': str(msg['SenderCode']),
                 'SenderName': str(msg['SenderName']),
                 'MessageText': str(msg['MessageText']),
+                'Timestamp': str(msg['Timestamp']),
                 'JalaliDate': str(msg['JalaliDate']),
                 'JalaliTime': str(msg['JalaliTime']),
-                'Timestamp': str(msg['Timestamp'])
+                'IsEdited': bool(msg['IsEdited']),
+                'AttachmentType': str(msg['AttachmentType']),
+                'AttachmentName': str(msg['AttachmentName']),
+                'AttachmentPath': str(msg['AttachmentPath']),
+                'AttachmentSize': str(msg['AttachmentSize'])
             })
+        
+        user = session.get('user_info')
+        update_user_activity(user['Codev'], user['Namev'])
+        
+        print(f"✅ دریافت پیام‌ها: {len(messages_list)} پیام")
         
         return jsonify({'success': True, 'messages': messages_list})
         
     except Exception as e:
         print(f"❌ خطا در دریافت پیام‌ها: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @app.route('/api/chat/online-count')
 def chat_online_count():
     """تعداد کاربران آنلاین"""
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
-    
     try:
-        count = get_online_users_count()
-        return jsonify({'success': True, 'count': count})
+        if not os.path.exists(USER_STATUS_FILE):
+            return jsonify({'count': 0})
+        
+        status_df = pd.read_excel(USER_STATUS_FILE, sheet_name='status')
+        
+        # کاربران آنلاین (فعالیت کمتر از 5 دقیقه پیش)
+        now = datetime.now()
+        online_count = 0
+        
+        for _, user in status_df.iterrows():
+            try:
+                last_activity = datetime.strptime(str(user['LastActivity']), '%Y-%m-%d %H:%M:%S')
+                diff = (now - last_activity).total_seconds()
+                if diff < 300:  # 5 دقیقه
+                    online_count += 1
+            except:
+                pass
+        
+        return jsonify({'count': online_count})
         
     except Exception as e:
         print(f"❌ خطا در شمارش آنلاین: {e}")
-        return jsonify({'success': True, 'count': 0})
+        return jsonify({'count': 0})
+
 
 @app.route('/api/chat/heartbeat', methods=['POST'])
 def chat_heartbeat():
-    """به‌روزرسانی وضعیت آنلاین کاربر"""
+    """ضربان قلب - نگه داشتن وضعیت آنلاین"""
     if 'user_id' not in session:
         return jsonify({'success': False}), 401
     
@@ -7589,10 +7686,14 @@ def chat_heartbeat():
         user = session.get('user_info')
         update_user_activity(user['Codev'], user['Namev'])
         return jsonify({'success': True})
-        
-    except Exception as e:
-        print(f"❌ خطا در heartbeat: {e}")
+    except:
         return jsonify({'success': False}), 500
+
+
+print("✅ سیستم چت گروهی پیشرفته آماده شد!")
+        
+        
+
 
 def filter_duplicate_products_in_analysis(sold_by_me, sold_by_others, not_sold):
     """
