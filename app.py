@@ -4131,26 +4131,34 @@ def take_exam(exam_code):
         
         print(f"🎯 User {session['user_info']['Namev']} starting exam: {exam_code} (Type: {exam_type})")
         
-        products_df = pd.read_excel('products.xlsx', sheet_name='products')
-        exam_products = products_df.head(10).to_dict('records')
-
+        # بارگذاری محصولات
+        try:
+            products_df = pd.read_excel('products.xlsx', sheet_name='products')
+            exam_products = products_df.head(10).to_dict('records')
+            print(f"✅ بارگذاری {len(exam_products)} محصول")
+        except Exception as e:
+            print(f"⚠️ خطا در بارگذاری محصولات: {e}")
+            exam_products = []
         
         # تشخیص نوع آزمون و هدایت به صفحه مناسب
         if exam_type == 'محصولات':
             return render_template('product_exam.html', 
-                                 exam=exam_info, 
+                                 exam=exam_info,
+                                 exam_products=exam_products,  # ✅ اضافه شد
                                  user=session['user_info'])
         else:
-            # سایر انواع آزمون (فعلاً placeholder)
             return render_template('take_exam.html', 
-                                 exam=exam_info, 
+                                 exam=exam_info,
+                                 exam_products=exam_products,  # ✅ دارید
                                  user=session['user_info'])
-        
+                                 
     except Exception as e:
         print(f"❌ Error in take_exam: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash('خطا در بارگذاری آزمون!', 'error')
-        return redirect(url_for('user_exam_list'))
- 
+        return redirect(url_for('user_exam_list')) 
+        
  # جعفر jafar 
 
 @app.route('/api/submit_exam_result', methods=['POST'])
