@@ -4131,6 +4131,10 @@ def take_exam(exam_code):
         
         print(f"🎯 User {session['user_info']['Namev']} starting exam: {exam_code} (Type: {exam_type})")
         
+        products_df = pd.read_excel('products.xlsx', sheet_name='products')
+        exam_products = products_df.head(10).to_dict('records')
+
+        
         # تشخیص نوع آزمون و هدایت به صفحه مناسب
         if exam_type == 'محصولات':
             return render_template('product_exam.html', 
@@ -4146,7 +4150,46 @@ def take_exam(exam_code):
         print(f"❌ Error in take_exam: {str(e)}")
         flash('خطا در بارگذاری آزمون!', 'error')
         return redirect(url_for('user_exam_list'))
+ 
+ # جعفر jafar 
 
+@app.route('/api/submit_exam_result', methods=['POST'])
+def submit_exam_result():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'لطفاً وارد شوید'}), 401
+    
+    try:
+        data = request.get_json()
+        
+        result_data = {
+            'ExamCode': data['exam_code'],
+            'UserCode': data['user_code'],
+            'Score': data['score'],
+            'CorrectAnswers': data['correct_answers'],
+            'TotalQuestions': data['total_questions'],
+            'TimeSpent': data['time_spent'],
+            'ExamDate': data['exam_date'],
+            'SubmitDate': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
+        file_path = 'exam_results.xlsx'
+        
+        if os.path.exists(file_path):
+            results_df = pd.read_excel(file_path, sheet_name='results')
+            new_result = pd.DataFrame([result_data])
+            results_df = pd.concat([results_df, new_result], ignore_index=True)
+        else:
+            results_df = pd.DataFrame([result_data])
+        
+        results_df.to_excel(file_path, sheet_name='results', index=False)
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        print(f"❌ خطا: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
+        
 @app.route('/get_exam_products/<exam_code>')
 def get_exam_products(exam_code):
     """دریافت محصولات برند آزمون برای آزمون محصولات"""
