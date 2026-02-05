@@ -2,241 +2,514 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>آزمون: {{ exam.ExamName }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Tahoma', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
         
         .exam-container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin: 20px auto;
-            padding: 0;
-            max-width: 900px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            max-width: 1200px;
+            margin: 0 auto;
             overflow: hidden;
         }
         
+        /* هدر آزمون */
         .exam-header {
             background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
-            padding: 30px;
+            padding: 20px;
             text-align: center;
-            position: relative;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
         
         .exam-header h1 {
-            margin: 0;
-            font-size: 2rem;
-            font-weight: bold;
+            font-size: 1.5rem;
             margin-bottom: 10px;
         }
         
-        .exam-code {
-            background: rgba(255,255,255,0.2);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            display: inline-block;
-            margin-bottom: 15px;
-        }
-        
-        .exam-details {
+        .exam-stats {
             display: flex;
             justify-content: space-around;
-            margin-top: 20px;
+            margin-top: 15px;
+            font-size: 0.9rem;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
         }
         
-        .exam-detail {
-            text-align: center;
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
-        .exam-detail i {
-            font-size: 1.2rem;
-            margin-bottom: 5px;
-            display: block;
-        }
-        
+        /* محتوای اصلی */
         .exam-content {
-            padding: 40px;
+            padding: 20px;
         }
         
-        .exam-instructions {
-            background: #e3f2fd;
-            border: 2px solid #2196f3;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-        }
-        
-        .exam-instructions h3 {
-            color: #1976d2;
+        .section-header {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 10px;
             margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        
+        .section-title {
+            font-weight: bold;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
             gap: 10px;
         }
         
-        .instruction-list {
-            margin: 0;
-            padding-right: 20px;
-        }
-        
-        .instruction-list li {
-            margin-bottom: 8px;
-            color: #1976d2;
-        }
-        
-        .exam-ready {
-            text-align: center;
-            padding: 30px;
-            background: #f8f9fa;
-            border-radius: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .ready-icon {
-            font-size: 3rem;
-            color: #28a745;
-            margin-bottom: 20px;
-        }
-        
-        .start-exam-btn {
-            background: linear-gradient(45deg, #28a745, #20c997);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px;
-        }
-        
-        .start-exam-btn:hover {
-            background: linear-gradient(45deg, #20c997, #28a745);
-            color: white;
-            transform: translateY(-3px);
-            text-decoration: none;
-            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
-        }
-        
-        .back-btn {
-            background: linear-gradient(45deg, #6c757d, #495057);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-weight: bold;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            margin: 10px;
-            transition: all 0.3s ease;
-        }
-        
-        .back-btn:hover {
-            background: linear-gradient(45deg, #495057, #6c757d);
-            color: white;
-            transform: translateY(-2px);
-            text-decoration: none;
-        }
-        
-        .exam-info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .info-card {
-            background: white;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-        
-        .info-card:hover {
-            border-color: #667eea;
-            transform: translateY(-5px);
-        }
-        
-        .info-card i {
-            font-size: 2rem;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-        
-        .info-card h4 {
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .info-card p {
+        .zoom-hint {
+            font-size: 0.85rem;
             color: #666;
-            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
-        .exam-description {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
+        /* قسمت اسامی کالا - با اسکرول */
+        .products-section {
+            margin-bottom: 25px;
+        }
+        
+        .products-list {
+            max-height: 40vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 15px;
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+        }
+        
+        .draggable-item {
+            background: white;
+            border: 3px solid #667eea;
             border-radius: 10px;
-            padding: 20px;
+            padding: 15px 20px;
+            margin: 12px 0;
+            cursor: move;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: all 0.3s;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .draggable-item::before {
+            content: '⋮⋮';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .draggable-item:active {
+            transform: scale(0.95);
+            opacity: 0.7;
+        }
+        
+        .draggable-item.dragging {
+            opacity: 0.3;
+        }
+        
+        .draggable-item.matched {
+            background: linear-gradient(45deg, #4caf50, #81c784);
+            color: white;
+            border-color: #4caf50;
+            pointer-events: none;
+            animation: matchSuccess 0.5s;
+        }
+        
+        @keyframes matchSuccess {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* قسمت تصاویر - با اسکرول */
+        .images-section {
             margin-bottom: 20px;
         }
         
-        .exam-description h4 {
-            color: #856404;
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px;
+            max-height: 55vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
+        }
+        
+        .drop-zone {
+            background: white;
+            border: 3px dashed #ccc;
+            border-radius: 12px;
+            padding: 15px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .drop-zone:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .drop-zone img {
+            max-width: 100%;
+            max-height: 120px;
+            object-fit: contain;
+            border-radius: 8px;
             margin-bottom: 10px;
+            transition: all 0.3s;
         }
         
-        .exam-description p {
-            color: #856404;
-            margin: 0;
+        .drop-zone:hover img {
+            transform: scale(1.05);
         }
         
+        .product-code {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        /* زوم آیکون */
+        .zoom-icon {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .drop-zone:hover .zoom-icon {
+            opacity: 1;
+        }
+        
+        .drop-zone.drag-over {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            border-style: solid;
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
+        }
+        
+        .drop-zone.correct {
+            background: linear-gradient(135deg, #c8e6c9, #a5d6a7);
+            border-color: #4caf50;
+            border-style: solid;
+            animation: correctPulse 0.5s;
+        }
+        
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .drop-zone.wrong {
+            animation: shake 0.5s;
+            background: #ffcdd2;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+        
+        .matched-label {
+            background: linear-gradient(45deg, #4caf50, #66bb6a);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-top: 10px;
+            box-shadow: 0 3px 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        /* Modal زوم تصویر */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .image-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            animation: zoomIn 0.3s;
+        }
+        
+        @keyframes zoomIn {
+            from { transform: scale(0.5); }
+            to { transform: scale(1); }
+        }
+        
+        .modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 10px 50px rgba(255,255,255,0.2);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: white;
+            color: #333;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            background: #f44336;
+            color: white;
+            transform: rotate(90deg);
+        }
+        
+        .modal-info {
+            position: absolute;
+            bottom: -50px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+        
+        /* المان شناور در موبایل */
+        .drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0.8;
+            transform: rotate(-5deg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        
+        /* دکمه‌های کنترل */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-submit {
+            background: linear-gradient(45deg, #4caf50, #66bb6a);
+            color: white;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(76, 175, 80, 0.4);
+        }
+        
+        .btn-reset {
+            background: linear-gradient(45deg, #ff9800, #fb8c00);
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(255, 152, 0, 0.4);
+        }
+        
+        .btn-exit {
+            background: linear-gradient(45deg, #f44336, #e53935);
+            color: white;
+        }
+        
+        /* پیام‌ها */
+        .toast-message {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 9998;
+            animation: slideInRight 0.3s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .toast-message.success {
+            background: linear-gradient(45deg, #4caf50, #66bb6a);
+            color: white;
+        }
+        
+        .toast-message.error {
+            background: linear-gradient(45deg, #f44336, #e53935);
+            color: white;
+        }
+        
+        /* اسکرول بار سفارشی */
+        .products-list::-webkit-scrollbar,
+        .images-grid::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        .products-list::-webkit-scrollbar-track,
+        .images-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .products-list::-webkit-scrollbar-thumb,
+        .images-grid::-webkit-scrollbar-thumb {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+        
+        .products-list::-webkit-scrollbar-thumb:hover,
+        .images-grid::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(45deg, #764ba2, #667eea);
+        }
+        
+        /* موبایل */
         @media (max-width: 768px) {
-            .exam-container {
-                margin: 10px;
-            }
-            
-            .exam-content {
-                padding: 20px;
-            }
-            
-            .exam-header {
-                padding: 20px;
-            }
-            
             .exam-header h1 {
-                font-size: 1.5rem;
+                font-size: 1.2rem;
             }
             
-            .exam-details {
+            .exam-stats {
+                font-size: 0.8rem;
+            }
+            
+            .products-list {
+                max-height: 35vh;
+            }
+            
+            .images-grid {
+                max-height: 50vh;
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 15px;
+            }
+            
+            .draggable-item {
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+            
+            .drop-zone {
+                min-height: 150px;
+                padding: 10px;
+            }
+            
+            .drop-zone img {
+                max-height: 100px;
+            }
+            
+            .controls {
                 flex-direction: column;
-                gap: 10px;
             }
             
-            .start-exam-btn, .back-btn {
+            .btn {
                 width: 100%;
-                justify-content: center;
-                margin: 5px 0;
+            }
+            
+            .zoom-hint {
+                font-size: 0.75rem;
             }
         }
     </style>
@@ -245,111 +518,433 @@
     <div class="exam-container">
         <!-- هدر آزمون -->
         <div class="exam-header">
-            <div class="exam-code">{{ exam.ExamCode }}</div>
-            <h1>{{ exam.ExamName }}</h1>
-            
-            <div class="exam-details">
-                <div class="exam-detail">
-                    <i class="fas fa-tag"></i>
-                    <span>{{ exam.BrandName }}</span>
+            <h1>📝 {{ exam.ExamName }}</h1>
+            <div class="exam-stats">
+                <div class="stat-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>تطابق صحیح: <strong><span id="score">0</span> / <span id="total">0</span></strong></span>
                 </div>
-                <div class="exam-detail">
-                    <i class="fas fa-list-ul"></i>
-                    <span>{{ exam.ExamType or 'عمومی' }}</span>
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <span>زمان: <strong><span id="timer">--:--</span></strong></span>
                 </div>
-                <div class="exam-detail">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span>{{ exam.CreatedDate }}</span>
+                <div class="stat-item">
+                    <i class="fas fa-percentage"></i>
+                    <span>نمره: <strong><span id="percentage">0</span>%</strong></span>
                 </div>
             </div>
         </div>
         
         <!-- محتوای آزمون -->
         <div class="exam-content">
-            
-            <!-- توضیحات آزمون -->
-            {% if exam.Description %}
-            <div class="exam-description">
-                <h4><i class="fas fa-info-circle"></i> درباره این آزمون</h4>
-                <p>{{ exam.Description }}</p>
-            </div>
-            {% endif %}
-            
-            <!-- دستورالعمل‌ها -->
-            <div class="exam-instructions">
-                <h3><i class="fas fa-clipboard-list"></i> دستورالعمل آزمون</h3>
-                <ul class="instruction-list">
-                    <li>آزمون شامل سوالات مختلفی درباره محصولات و برند انتخاب شده است</li>
-                    <li>برای هر سوال زمان مشخصی در نظر گرفته شده است</li>
-                    <li>پس از شروع آزمون، امکان بازگشت وجود ندارد</li>
-                    <li>تمام سوالات را با دقت مطالعه کنید</li>
-                    <li>بهترین پاسخ را انتخاب کنید</li>
-                    <li>پس از پایان آزمون، نتیجه برای شما نمایش داده خواهد شد</li>
-                </ul>
-            </div>
-            
-            <!-- اطلاعات آزمون -->
-            <div class="exam-info-grid">
-                <div class="info-card">
-                    <i class="fas fa-question-circle"></i>
-                    <h4>تعداد سوالات</h4>
-                    <p>به زودی اعلام می‌شود</p>
+            <!-- قسمت اسامی کالا -->
+            <div class="products-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-tags"></i>
+                        اسامی کالاها (بکشید روی تصاویر)
+                    </div>
                 </div>
-                <div class="info-card">
-                    <i class="fas fa-clock"></i>
-                    <h4>زمان آزمون</h4>
-                    <p>به زودی اعلام می‌شود</p>
-                </div>
-                <div class="info-card">
-                    <i class="fas fa-chart-bar"></i>
-                    <h4>نمره قبولی</h4>
-                    <p>70 درصد</p>
-                </div>
-                <div class="info-card">
-                    <i class="fas fa-medal"></i>
-                    <h4>سطح</h4>
-                    <p>{{ exam.ExamType or 'متوسط' }}</p>
+                <div class="products-list" id="productsList">
+                    <!-- اسامی اینجا بارگذاری می‌شوند -->
                 </div>
             </div>
             
-            <!-- آماده شروع -->
-            <div class="exam-ready">
-                <div class="ready-icon">
-                    <i class="fas fa-play-circle"></i>
+            <!-- قسمت تصاویر -->
+            <div class="images-section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <i class="fas fa-images"></i>
+                        تصاویر کالاها
+                    </div>
+                    <div class="zoom-hint">
+                        <i class="fas fa-search-plus"></i>
+                        روی تصویر کلیک کنید برای بزرگنمایی
+                    </div>
                 </div>
-                <h3>آماده شروع آزمون هستید؟</h3>
-                <p>با کلیک بر روی دکمه زیر، آزمون آغاز خواهد شد</p>
-                
-                <div class="mt-4">
-                    <button class="start-exam-btn" onclick="startExamConfirm()">
-                        <i class="fas fa-rocket"></i>
-                        شروع آزمون
-                    </button>
-                    
-                    <a href="{{ url_for('user_exam_list') }}" class="back-btn">
-                        <i class="fas fa-arrow-right"></i>
-                        بازگشت به لیست
-                    </a>
+                <div class="images-grid" id="imagesGrid">
+                    <!-- تصاویر اینجا بارگذاری می‌شوند -->
                 </div>
+            </div>
+            
+            <!-- دکمه‌های کنترل -->
+            <div class="controls">
+                <button class="btn btn-reset" onclick="resetExam()">
+                    <i class="fas fa-redo"></i>
+                    شروع مجدد
+                </button>
+                <button class="btn btn-submit" onclick="submitExam()">
+                    <i class="fas fa-paper-plane"></i>
+                    ثبت نتیجه
+                </button>
+                <button class="btn btn-exit" onclick="exitExam()">
+                    <i class="fas fa-times-circle"></i>
+                    خروج از آزمون
+                </button>
             </div>
         </div>
     </div>
     
+    <!-- Modal زوم تصویر -->
+    <div class="image-modal" id="imageModal" onclick="closeModal()">
+        <div class="modal-content">
+            <div class="modal-close">×</div>
+            <img id="modalImage" src="" alt="">
+            <div class="modal-info" id="modalInfo"></div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function startExamConfirm() {
-            if (confirm('آیا مطمئن هستید که می‌خواهید آزمون را شروع کنید؟\n\nتوجه: پس از شروع، امکان بازگشت وجود ندارد.')) {
-                // فعلاً یک پیام ساده - بعداً به صفحه سوالات هدایت می‌شود
-                alert('🚧 بخش سوالات آزمون در حال توسعه است.\n\nبه زودی این قابلیت اضافه خواهد شد!');
+        // داده‌های آزمون - از سرور Flask بارگذاری می‌شود
+        const examData = {{ exam_products | tojson | safe }};
+        const examCode = '{{ exam.ExamCode }}';
+        const userCode = '{{ user.Codev }}';
+        
+        let correctMatches = 0;
+        let totalQuestions = examData.length;
+        let startTime = Date.now();
+        let touchDragElement = null;
+        let dragGhost = null;
+        
+        // بارگذاری اولیه
+        window.addEventListener('load', function() {
+            document.getElementById('total').textContent = totalQuestions;
+            loadProducts();
+            loadImages();
+            startTimer();
+        });
+        
+        // بارگذاری اسامی کالا
+        function loadProducts() {
+            const container = document.getElementById('productsList');
+            container.innerHTML = '';
+            
+            examData.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'draggable-item';
+                div.textContent = item.ProductName;
+                div.dataset.code = item.ProductCode;
+                div.draggable = true;
                 
-                // TODO: هدایت به صفحه سوالات آزمون
-                // window.location.href = `/exam_questions/{{ exam.ExamCode }}`;
+                // Desktop Drag Events
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragend', handleDragEnd);
+                
+                // Mobile Touch Events - با پشتیبانی اسکرول
+                div.addEventListener('touchstart', handleTouchStart, { passive: false });
+                div.addEventListener('touchmove', handleTouchMove, { passive: false });
+                div.addEventListener('touchend', handleTouchEnd);
+                
+                container.appendChild(div);
+            });
+        }
+        
+        // بارگذاری تصاویر
+        function loadImages() {
+            const container = document.getElementById('imagesGrid');
+            container.innerHTML = '';
+            
+            // مخلوط کردن ترتیب
+            const shuffled = [...examData].sort(() => Math.random() - 0.5);
+            
+            shuffled.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'drop-zone';
+                div.dataset.code = item.ProductCode;
+                
+                div.innerHTML = `
+                    <div class="zoom-icon" title="کلیک برای بزرگنمایی">
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                    <img src="/static/products/${item.ProductImage}" alt="${item.ProductName}" 
+                         onclick="openImageModal(event, '/static/products/${item.ProductImage}', '${item.ProductName}', '${item.ProductCode}')">
+                    <div class="product-code">کد: ${item.ProductCode}</div>
+                `;
+                
+                // Desktop Drop Events
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                div.addEventListener('dragleave', handleDragLeave);
+                
+                container.appendChild(div);
+            });
+        }
+        
+        // ========== Desktop Drag & Drop ==========
+        function handleDragStart(e) {
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.target.dataset.code);
+        }
+        
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropZone = e.currentTarget;
+            dropZone.classList.remove('drag-over');
+            
+            const productCode = e.dataTransfer.getData('text/plain');
+            const imageCode = dropZone.dataset.code;
+            
+            checkMatch(productCode, imageCode, dropZone);
+        }
+        
+        // ========== Mobile Touch Events با پشتیبانی اسکرول ==========
+        function handleTouchStart(e) {
+            touchDragElement = e.target;
+            
+            // ایجاد المان شناور
+            const touch = e.touches[0];
+            createDragGhost(e.target, touch.clientX, touch.clientY);
+            
+            e.target.classList.add('dragging');
+        }
+        
+        function handleTouchMove(e) {
+            if (!touchDragElement) return;
+            
+            const touch = e.touches[0];
+            
+            // ✅ جلوگیری از اسکرول فقط روی المان drag
+            if (e.target === touchDragElement || e.target.closest('.draggable-item')) {
+                e.preventDefault();
+            }
+            
+            // به‌روزرسانی موقعیت ghost
+            if (dragGhost) {
+                dragGhost.style.left = `${touch.clientX - 75}px`;
+                dragGhost.style.top = `${touch.clientY - 25}px`;
+            }
+            
+            // پیدا کردن drop zone زیر انگشت
+            if (dragGhost) {
+                dragGhost.style.display = 'none';
+            }
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (dragGhost) {
+                dragGhost.style.display = 'block';
+            }
+            
+            // هایلایت drop zone
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('drag-over');
+            });
+            
+            const dropZone = elementBelow?.closest('.drop-zone');
+            if (dropZone) {
+                dropZone.classList.add('drag-over');
             }
         }
         
-        // نمایش اطلاعات کاربر
-        console.log('👤 User:', '{{ user.Namev }}');
-        console.log('📝 Exam:', '{{ exam.ExamCode }}');
+        function handleTouchEnd(e) {
+            if (!touchDragElement) return;
+            
+            const touch = e.changedTouches[0];
+            
+            // پیدا کردن drop zone
+            if (dragGhost) {
+                dragGhost.style.display = 'none';
+            }
+            
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const dropZone = elementBelow?.closest('.drop-zone');
+            
+            if (dropZone) {
+                const productCode = touchDragElement.dataset.code;
+                const imageCode = dropZone.dataset.code;
+                checkMatch(productCode, imageCode, dropZone);
+            }
+            
+            // پاکسازی
+            touchDragElement.classList.remove('dragging');
+            if (dragGhost) {
+                dragGhost.remove();
+                dragGhost = null;
+            }
+            touchDragElement = null;
+            
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.classList.remove('drag-over');
+            });
+        }
+        
+        function createDragGhost(element, x, y) {
+            dragGhost = element.cloneNode(true);
+            dragGhost.className = 'draggable-item drag-ghost';
+            dragGhost.style.position = 'fixed';
+            dragGhost.style.left = `${x - 75}px`;
+            dragGhost.style.top = `${y - 25}px`;
+            dragGhost.style.width = '150px';
+            document.body.appendChild(dragGhost);
+        }
+        
+        // بررسی تطابق
+        function checkMatch(productCode, imageCode, dropZone) {
+            const productElement = document.querySelector(`[data-code="${productCode}"]`);
+            
+            if (productCode === imageCode) {
+                // ✅ صحیح
+                dropZone.classList.add('correct');
+                const productName = productElement.textContent;
+                dropZone.innerHTML = `
+                    ${dropZone.innerHTML.split('<div class="product-code">')[0]}
+                    <div class="matched-label">${productName}</div>
+                    <div class="product-code">کد: ${productCode}</div>
+                `;
+                productElement.classList.add('matched');
+                correctMatches++;
+                
+                // به‌روزرسانی نمره
+                document.getElementById('score').textContent = correctMatches;
+                const percentage = Math.round((correctMatches / totalQuestions) * 100);
+                document.getElementById('percentage').textContent = percentage;
+                
+                showToast('✅ صحیح!', 'success');
+                
+                // بررسی اتمام
+                if (correctMatches === totalQuestions) {
+                    setTimeout(() => {
+                        alert(`🎉 تبریک! همه تطابق‌ها صحیح بود!\n\nنمره شما: ${percentage}%`);
+                    }, 500);
+                }
+            } else {
+                // ❌ غلط
+                dropZone.classList.add('wrong');
+                setTimeout(() => dropZone.classList.remove('wrong'), 500);
+                showToast('❌ اشتباه! دوباره تلاش کنید', 'error');
+            }
+        }
+        
+        // ========== Modal زوم تصویر ==========
+        function openImageModal(event, imageSrc, productName, productCode) {
+            event.stopPropagation(); // جلوگیری از trigger شدن drop
+            
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalInfo = document.getElementById('modalInfo');
+            
+            modalImage.src = imageSrc;
+            modalInfo.innerHTML = `<strong>${productName}</strong> (کد: ${productCode})`;
+            
+            modal.classList.add('active');
+            
+            // غیرفعال کردن اسکرول body
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('active');
+            
+            // فعال کردن اسکرول body
+            document.body.style.overflow = 'auto';
+        }
+        
+        // نمایش پیام
+        function showToast(text, type) {
+            // حذف پیام‌های قبلی
+            document.querySelectorAll('.toast-message').forEach(t => t.remove());
+            
+            const toast = document.createElement('div');
+            toast.className = `toast-message ${type}`;
+            toast.textContent = text;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 2000);
+        }
+        
+        // تایمر
+        function startTimer() {
+            setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                document.getElementById('timer').textContent = 
+                    `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+        
+        // شروع مجدد
+        function resetExam() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید آزمون را از نو شروع کنید؟')) {
+                correctMatches = 0;
+                document.getElementById('score').textContent = '0';
+                document.getElementById('percentage').textContent = '0';
+                startTime = Date.now();
+                loadProducts();
+                loadImages();
+                showToast('🔄 آزمون از نو شروع شد', 'success');
+            }
+        }
+        
+        // ثبت نتیجه
+        function submitExam() {
+            if (correctMatches < totalQuestions) {
+                if (!confirm(`هنوز ${totalQuestions - correctMatches} تطابق باقی مانده است.\n\nآیا مطمئن هستید که می‌خواهید نتیجه را ثبت کنید؟`)) {
+                    return;
+                }
+            }
+            
+            const percentage = Math.round((correctMatches / totalQuestions) * 100);
+            const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            
+            // ارسال به سرور
+            fetch('/api/submit_exam_result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    exam_code: examCode,
+                    user_code: userCode,
+                    score: percentage,
+                    correct_answers: correctMatches,
+                    total_questions: totalQuestions,
+                    time_spent: elapsedTime,
+                    exam_date: new Date().toISOString()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`✅ نتیجه با موفقیت ثبت شد!\n\nنمره شما: ${percentage}%\nتطابق صحیح: ${correctMatches}/${totalQuestions}\nزمان: ${Math.floor(elapsedTime/60)} دقیقه و ${elapsedTime%60} ثانیه`);
+                    window.location.href = '/user_exam_list';
+                } else {
+                    alert('❌ خطا در ثبت نتیجه: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ خطا در ارسال نتیجه!');
+            });
+        }
+        
+        // خروج از آزمون
+        function exitExam() {
+            if (confirm('آیا مطمئن هستید که می‌خواهید از آزمون خارج شوید؟\n\nتوجه: نتیجه ذخیره نخواهد شد!')) {
+                window.location.href = '/user_exam_list';
+            }
+        }
+        
+        // جلوگیری از بستن صفحه بدون تأیید
+        window.addEventListener('beforeunload', function(e) {
+            if (correctMatches > 0 && correctMatches < totalQuestions) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
     </script>
 </body>
 </html>
